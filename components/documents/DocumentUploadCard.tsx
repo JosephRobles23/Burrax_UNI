@@ -8,13 +8,13 @@ import { Camera, Upload, Trash2, CheckCircle } from 'lucide-react';
 import CameraModal from './CameraModal';
 
 interface DocumentUploadCardProps {
-  type: 'selfie' | 'dni' | 'carnet';
+  type: 'selfie' | 'carnet';
   title: string;
   description: string;
   icon: string;
   capturedImage: string | null;
-  onImageCapture: (type: 'selfie' | 'dni' | 'carnet', imageData: string) => void;
-  onImageRemove: (type: 'selfie' | 'dni' | 'carnet') => void;
+  onImageCapture: (type: 'selfie' | 'carnet', imageData: string) => void;
+  onImageRemove: (type: 'selfie' | 'carnet') => void;
   disabled?: boolean;
 }
 
