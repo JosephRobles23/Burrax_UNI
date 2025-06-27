@@ -252,7 +252,7 @@ export default function OCRValidation({
           setShowManualEntry(true);
         } else {
           toast.success('¡Validación OCR exitosa!');
-          setTimeout(() => onValidation(true), 1500);
+          // No llamar automáticamente a onValidation - dejar que el usuario decida
         }
         
       } catch (error) {
@@ -296,7 +296,8 @@ export default function OCRValidation({
 
     if (overall) {
       toast.success('Validación manual exitosa');
-      onValidation(true);
+      // Salir del modo manual para mostrar resultados
+      setShowManualEntry(false);
     } else {
       let errorMsg = 'Los datos no coinciden:';
       if (!dniMatch) errorMsg += ' DNI incorrecto.';
@@ -411,77 +412,87 @@ export default function OCRValidation({
     );
   }
 
+  // Mostrar pantalla de resultados cuando hay validationResult y no está en otros modos
+  if (validationResult && !isProcessing && !showManualEntry) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          {validationResult.overall ? (
+            <CheckCircle className="mx-auto w-16 h-16 text-green-500 mb-4" />
+          ) : (
+            <XCircle className="mx-auto w-16 h-16 text-red-500 mb-4" />
+          )}
+          <h3 className="text-2xl font-bold text-white mb-2">
+            {validationResult.overall ? 'Validación Exitosa' : 'Validación Falló'}
+          </h3>
+          <p className="text-gray-400">
+            {validationResult.overall 
+              ? 'El DNI y Código del carnet coinciden correctamente'
+              : 'El DNI o Código extraído no coincide con la información proporcionada'
+            }
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
+          <Card className="glass-card p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              {validationResult.dniMatch ? (
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-500" />
+              )}
+              <h4 className="font-semibold text-white">DNI</h4>
+            </div>
+            <p className="text-sm text-gray-400">
+              Esperado: {expectedDni}
+            </p>
+            <p className="text-sm text-gray-400">
+              Extraído: {extractedData.dniFromCarnet || 'No detectado'}
+            </p>
+          </Card>
+
+          <Card className="glass-card p-4">
+            <div className="flex items-center space-x-2 mb-2">
+              {validationResult.codigoMatch ? (
+                <CheckCircle className="h-5 w-5 text-green-500" />
+              ) : (
+                <XCircle className="h-5 w-5 text-red-500" />
+              )}
+              <h4 className="font-semibold text-white">Código (primeros 8 dígitos)</h4>
+            </div>
+            <p className="text-sm text-gray-400">
+              Esperado: {expectedCodigo.substring(0, 8)} (de {expectedCodigo})
+            </p>
+            <p className="text-sm text-gray-400">
+              Extraído: {extractedData.codigoFromCarnet || 'No detectado'}
+            </p>
+          </Card>
+        </div>
+
+        <div className="flex space-x-4">
+          <Button
+            onClick={() => onValidation(false)}
+            variant="outline"
+            className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
+          >
+            Reintentar
+          </Button>
+          <Button
+            onClick={() => onValidation(validationResult.overall || false)}
+            className="flex-1 golden-button"
+            disabled={!validationResult.overall}
+          >
+            {validationResult.overall ? 'Completar Registro' : 'Validación Requerida'}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Fallback por si no se cumple ninguna condición anterior
   return (
-    <div className="space-y-6">
-      <div className="text-center">
-        {validationResult?.overall ? (
-          <CheckCircle className="mx-auto w-16 h-16 text-green-500 mb-4" />
-        ) : (
-          <XCircle className="mx-auto w-16 h-16 text-red-500 mb-4" />
-        )}
-        <h3 className="text-2xl font-bold text-white mb-2">
-          {validationResult?.overall ? 'Validación Exitosa' : 'Validación Falló'}
-        </h3>
-        <p className="text-gray-400">
-          {validationResult?.overall 
-            ? 'El DNI y Código del carnet coinciden correctamente'
-            : 'El DNI o Código extraído no coincide con la información proporcionada'
-          }
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-        <Card className="glass-card p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            {validationResult?.dniMatch ? (
-              <CheckCircle className="h-5 w-5 text-green-500" />
-            ) : (
-              <XCircle className="h-5 w-5 text-red-500" />
-            )}
-            <h4 className="font-semibold text-white">DNI</h4>
-          </div>
-          <p className="text-sm text-gray-400">
-            Esperado: {expectedDni}
-          </p>
-          <p className="text-sm text-gray-400">
-            Extraído: {extractedData.dniFromCarnet || 'No detectado'}
-          </p>
-        </Card>
-
-        <Card className="glass-card p-4">
-          <div className="flex items-center space-x-2 mb-2">
-            {validationResult?.codigoMatch ? (
-              <CheckCircle className="h-5 w-5 text-green-500" />
-            ) : (
-              <XCircle className="h-5 w-5 text-red-500" />
-            )}
-            <h4 className="font-semibold text-white">Código (primeros 8 dígitos)</h4>
-          </div>
-          <p className="text-sm text-gray-400">
-            Esperado: {expectedCodigo.substring(0, 8)} (de {expectedCodigo})
-          </p>
-          <p className="text-sm text-gray-400">
-            Extraído: {extractedData.codigoFromCarnet || 'No detectado'}
-          </p>
-        </Card>
-      </div>
-
-      <div className="flex space-x-4">
-        <Button
-          onClick={() => onValidation(false)}
-          variant="outline"
-          className="flex-1 border-red-500/50 text-red-400 hover:bg-red-500/10"
-        >
-          Reintentar
-        </Button>
-        <Button
-          onClick={() => onValidation(validationResult?.overall || false)}
-          className="flex-1 golden-button"
-          disabled={!validationResult?.overall}
-        >
-          {validationResult?.overall ? 'Completar Registro' : 'Validación Requerida'}
-        </Button>
-      </div>
+    <div className="text-center space-y-4">
+      <div className="text-white">Cargando validación...</div>
     </div>
   );
 }

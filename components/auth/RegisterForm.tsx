@@ -54,6 +54,7 @@ export default function RegisterForm() {
     carnet: null,
   });
   const [showOCRValidation, setShowOCRValidation] = useState(false);
+  const [showConfirmation, setShowConfirmation] = useState(false);
 
   const {
     register,
@@ -180,7 +181,7 @@ export default function RegisterForm() {
         }
       }
       
-      // Create auth user only after OCR validation and verification
+      // Create auth user after OCR validation (without uploading images)
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -209,19 +210,7 @@ export default function RegisterForm() {
 
       const userId = authData.user.id;
 
-      // Upload images to final location
-      let selfieUrl, carnetUrl;
-      try {
-        [selfieUrl, carnetUrl] = await Promise.all([
-          uploadImage(capturedImages.selfie!, `selfie-${Date.now()}.jpg`, userId),
-          uploadImage(capturedImages.carnet!, `carnet-${Date.now()}.jpg`, userId),
-        ]);
-      } catch (uploadError) {
-        console.error('Error uploading images:', uploadError);
-        throw new Error('Error subiendo las imágenes. Inténtalo de nuevo.');
-      }
-
-      // Insert user data using insert instead of upsert to avoid conflicts
+      // Insert user data without image URLs (images are stored locally for validation only)
       const { error: insertError } = await supabase
         .from('users')
         .insert({
@@ -232,9 +221,9 @@ export default function RegisterForm() {
           facultad: formData.facultad,
           carrera: formData.carrera,
           codigo: formData.codigo,
-          url_selfie: selfieUrl,
-          url_dni: null, // No longer capturing DNI separately
-          url_carnet: carnetUrl,
+          url_selfie: null, // Images not uploaded during registration
+          url_dni: null,
+          url_carnet: null,
         });
 
       if (insertError) {
@@ -255,7 +244,7 @@ export default function RegisterForm() {
       }
 
       toast.success('¡Registro completado exitosamente! Revisa tu email para confirmar tu cuenta.');
-      setCurrentStep(3);
+      setCurrentStep(4); // Go to success step
       
     } catch (error: any) {
       console.error('Registration error:', error);
@@ -278,10 +267,12 @@ export default function RegisterForm() {
   const handleOCRValidation = (isValid: boolean) => {
     setShowOCRValidation(false);
     if (isValid) {
-      // Only create user after successful OCR validation
-      completeRegistration();
+      // Show confirmation step instead of immediate registration
+      toast.success('¡Validación OCR exitosa!');
+      setShowConfirmation(true);
     } else {
       toast.error('La validación OCR falló. Verifica que los datos coincidan.');
+      // Return to document capture step
     }
   };
 
@@ -297,8 +288,71 @@ export default function RegisterForm() {
     );
   }
 
+  if (showConfirmation) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className="mx-auto w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
+            <CheckCircle className="h-8 w-8 text-green-500" />
+          </div>
+          <h3 className="text-2xl font-bold text-white mb-2">¡Validación Completada!</h3>
+          <p className="text-gray-400">
+            Tu DNI y código universitario han sido validados exitosamente. 
+            ¿Deseas completar tu registro ahora?
+          </p>
+        </div>
+
+        <div className="max-w-md mx-auto bg-blue-500/10 border border-blue-500/20 rounded-lg p-4">
+          <h4 className="font-semibold text-blue-400 mb-2">Resumen de tu registro:</h4>
+          <div className="text-sm text-gray-300 space-y-1">
+            <p><span className="text-white">Nombre:</span> {getValues('nombres')} {getValues('apellidos')}</p>
+            <p><span className="text-white">DNI:</span> {getValues('dni')}</p>
+            <p><span className="text-white">Código:</span> {getValues('codigo')}</p>
+            <p><span className="text-white">Email:</span> {getValues('email')}</p>
+            <p><span className="text-white">Facultad:</span> {getValues('facultad')}</p>
+          </div>
+        </div>
+
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
+          <p className="text-sm text-yellow-400">
+            ℹ️ Las imágenes capturadas solo se usaron para validación. Podrás subir tus documentos oficiales 
+            desde tu perfil una vez que completes el registro.
+          </p>
+        </div>
+
+        <div className="flex space-x-4">
+          <Button
+            onClick={() => {
+              setShowConfirmation(false);
+              setCurrentStep(2); // Return to document capture
+            }}
+            variant="outline"
+            className="flex-1 border-white/20 text-white hover:bg-white/10"
+            disabled={isLoading}
+          >
+            Revisar Documentos
+          </Button>
+          <Button
+            onClick={completeRegistration}
+            disabled={isLoading}
+            className="flex-1 golden-button"
+          >
+            {isLoading ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                <span>Registrando...</span>
+              </div>
+            ) : (
+              'Completar Registro'
+            )}
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   // Success screen after registration
-  if (currentStep === 3) {
+  if (currentStep === 4) {
     return (
       <div className="text-center space-y-6">
         <div className="flex justify-center">
