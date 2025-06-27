@@ -99,15 +99,9 @@ export default function CameraCapture({ onImageCapture, capturedImages }: Camera
       icon: Camera,
     },
     {
-      key: 'dni' as const,
-      title: 'DNI',
-      description: 'Foto de tu documento de identidad',
-      icon: Camera,
-    },
-    {
       key: 'carnet' as const,
       title: 'Carnet Universitario',
-      description: 'Foto de tu carnet de estudiante',
+      description: 'Debe mostrar claramente tu DNI y código',
       icon: Camera,
     },
   ];
@@ -156,7 +150,7 @@ export default function CameraCapture({ onImageCapture, capturedImages }: Camera
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {imageTypes.map((type) => (
           <Card key={type.key} className="glass-card p-6 text-center space-y-4">
             <div className="mx-auto w-16 h-16 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-600 flex items-center justify-center">

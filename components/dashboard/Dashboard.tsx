@@ -18,10 +18,12 @@ import {
   Camera,
   Sparkles,
   Bus,
-  Clock
+  Clock,
+  Upload
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ReservationSystem from '@/components/mobility/ReservationSystem';
+import { DocumentUploadModal } from '@/components/documents';
 
 interface UserData {
   id: string;
@@ -45,6 +47,7 @@ export default function Dashboard({ user }: DashboardProps) {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
+  const [showDocumentModal, setShowDocumentModal] = useState(false);
 
   useEffect(() => {
     fetchUserData();
@@ -73,6 +76,11 @@ export default function Dashboard({ user }: DashboardProps) {
     }
   };
 
+  const handleDocumentUploadComplete = () => {
+    // Refresh user data after upload
+    fetchUserData();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -89,9 +97,9 @@ export default function Dashboard({ user }: DashboardProps) {
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <Card className="glass-card p-8 text-center max-w-md">
           <UserIcon className="mx-auto w-16 h-16 text-yellow-500 mb-4" />
-          <h2 className="text-2xl font-bold text-white mb-2">Perfil Incompleto</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">Perfil Registrado Exitosamente</h2>
           <p className="text-gray-400 mb-6">
-            No se encontraron datos de usuario. Por favor, contacta al administrador.
+            Por favor, vuelve a iniciar sesión.
           </p>
           <Button
             onClick={() => supabase.auth.signOut()}
@@ -111,7 +119,7 @@ export default function Dashboard({ user }: DashboardProps) {
     day: 'numeric',
   });
 
-  const isProfileComplete = userData.url_selfie && userData.url_dni && userData.url_carnet;
+  const isProfileComplete = userData.url_selfie && userData.url_carnet;
 
   return (
     <div className="min-h-screen bg-black p-4">
@@ -170,13 +178,22 @@ export default function Dashboard({ user }: DashboardProps) {
                   ) : (
                     <>
                       <Camera className="h-8 w-8 text-yellow-500" />
-                      <div>
+                      <div className="flex-1">
                         <h3 className="font-semibold text-white">Documentos Pendientes</h3>
                         <p className="text-sm text-gray-400">Faltan algunos documentos por subir</p>
                       </div>
-                      <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">
-                        Pendiente
-                      </Badge>
+                      <div className="flex items-center space-x-3">
+                        <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50">
+                          Pendiente
+                        </Badge>
+                        <Button
+                          onClick={() => setShowDocumentModal(true)}
+                          className="golden-button text-sm"
+                        >
+                          <Upload className="h-4 w-4 mr-2" />
+                          Subir Documentos
+                        </Button>
+                      </div>
                     </>
                   )}
                 </div>
@@ -261,15 +278,6 @@ export default function Dashboard({ user }: DashboardProps) {
                   </div>
                   
                   <div className="flex items-center justify-between">
-                    <span className="text-white">DNI</span>
-                    {userData.url_dni ? (
-                      <CheckCircle className="h-5 w-5 text-green-500" />
-                    ) : (
-                      <div className="w-5 h-5 rounded-full border-2 border-gray-400"></div>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center justify-between">
                     <span className="text-white">Carnet Universitario</span>
                     {userData.url_carnet ? (
                       <CheckCircle className="h-5 w-5 text-green-500" />
@@ -278,6 +286,19 @@ export default function Dashboard({ user }: DashboardProps) {
                     )}
                   </div>
                 </div>
+
+                {/* Upload Button for Documents Section */}
+                {!isProfileComplete && (
+                  <div className="pt-4 border-t border-white/10">
+                    <Button
+                      onClick={() => setShowDocumentModal(true)}
+                      className="w-full golden-button"
+                    >
+                      <Camera className="h-4 w-4 mr-2" />
+                      Completar Documentos
+                    </Button>
+                  </div>
+                )}
               </Card>
             </div>
 
@@ -289,7 +310,7 @@ export default function Dashboard({ user }: DashboardProps) {
                   <h2 className="text-xl font-bold text-white">Documentos Validados</h2>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
                   {userData.url_selfie && (
                     <div className="text-center">
                       <h3 className="text-white font-medium mb-2">Selfie</h3>
@@ -297,19 +318,6 @@ export default function Dashboard({ user }: DashboardProps) {
                         <img
                           src={userData.url_selfie}
                           alt="Selfie"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                  )}
-                  
-                  {userData.url_dni && (
-                    <div className="text-center">
-                      <h3 className="text-white font-medium mb-2">DNI</h3>
-                      <div className="w-full h-48 rounded-lg overflow-hidden border border-green-500/50">
-                        <img
-                          src={userData.url_dni}
-                          alt="DNI"
                           className="w-full h-full object-cover"
                         />
                       </div>
@@ -384,6 +392,14 @@ export default function Dashboard({ user }: DashboardProps) {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Document Upload Modal */}
+      <DocumentUploadModal
+        isOpen={showDocumentModal}
+        onClose={() => setShowDocumentModal(false)}
+        user={user}
+        onUploadComplete={handleDocumentUploadComplete}
+      />
     </div>
   );
 }

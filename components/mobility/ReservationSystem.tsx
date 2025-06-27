@@ -47,40 +47,40 @@ interface ReservationCounts {
 
 const TIME_SLOTS: TimeSlot[] = [
   {
-    id: 'slot-1730',
-    label: '5:30 - 5:45 PM',
-    startTime: '17:30',
-    endTime: '17:45',
+    id: 'slot-0310',
+    label: '3:10 - 3:25 AM',
+    startTime: '03:10',
+    endTime: '03:25',
     maxSeats: 15,
     maxStanding: 0,
     isActive: false,
     allowStandingOnly: false,
   },
   {
-    id: 'slot-1830',
-    label: '6:30 - 6:45 PM',
-    startTime: '18:30',
-    endTime: '18:45',
+    id: 'slot-0325',
+    label: '3:25 - 3:40 AM',
+    startTime: '03:25',
+    endTime: '03:40',
     maxSeats: 15,
     maxStanding: 0,
     isActive: false,
     allowStandingOnly: false,
   },
   {
-    id: 'slot-1915',
-    label: '7:15 - 7:30 PM',
-    startTime: '19:15',
-    endTime: '19:30',
+    id: 'slot-0340',
+    label: '3:40 - 3:55 AM',
+    startTime: '03:40',
+    endTime: '03:55',
     maxSeats: 15,
     maxStanding: 0,
     isActive: false,
     allowStandingOnly: false,
   },
   {
-    id: 'slot-1930',
-    label: '7:30 - 7:55 PM',
-    startTime: '19:30',
-    endTime: '19:55',
+    id: 'slot-0355',
+    label: '3:55 - 4:20 AM',
+    startTime: '03:55',
+    endTime: '04:20',
     maxSeats: 0,
     maxStanding: 85,
     isActive: false,
@@ -97,15 +97,30 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
   const [reservationCounts, setReservationCounts] = useState<ReservationCounts[]>([]);
   const [userReservations, setUserReservations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [currentPeruTime, setCurrentPeruTime] = useState<string>('');
+
+  const updateCurrentTime = () => {
+    const now = new Date();
+    const peruTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Lima"}));
+    const timeString = peruTime.toLocaleTimeString('es-PE', { 
+      timeZone: 'America/Lima',
+      hour12: true,
+      hour: 'numeric',
+      minute: '2-digit'
+    });
+    setCurrentPeruTime(timeString);
+  };
 
   useEffect(() => {
     fetchReservationCounts();
     fetchUserReservations();
     updateActiveTimeSlots();
+    updateCurrentTime();
     
     // Update every minute
     const interval = setInterval(() => {
       updateActiveTimeSlots();
+      updateCurrentTime();
       fetchReservationCounts();
     }, 60000);
 
@@ -113,8 +128,13 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
   }, []);
 
   const updateActiveTimeSlots = () => {
+    // Obtener hora actual en zona horaria de Perú (GMT-5)
     const now = new Date();
-    const currentTime = now.getHours() * 100 + now.getMinutes();
+    const peruTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Lima"}));
+    const currentTime = peruTime.getHours() * 100 + peruTime.getMinutes();
+    
+    console.log('Hora actual en Perú:', peruTime.toLocaleTimeString('es-PE', { timeZone: 'America/Lima' }));
+    console.log('Hora en formato HHMM:', currentTime);
     
     TIME_SLOTS.forEach(slot => {
       const [startHour, startMin] = slot.startTime.split(':').map(Number);
@@ -124,7 +144,24 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
       
       // Active if current time is within 15 minutes before start time
       const preStartTime = startTime - 15;
-      slot.isActive = currentTime >= preStartTime && currentTime <= startTime;
+      
+      // Un slot está activo si:
+      // 1. Estamos dentro de los 15 minutos antes del horario de inicio, O
+      // 2. Estamos dentro del horario del slot
+      const isWithinPreStart = currentTime >= preStartTime && currentTime < startTime;
+      const isWithinSlot = currentTime >= startTime && currentTime <= endTime;
+      
+      slot.isActive = isWithinPreStart || isWithinSlot;
+      
+      console.log(`Slot ${slot.label}:`, {
+        startTime,
+        endTime,
+        preStartTime,
+        currentTime,
+        isWithinPreStart,
+        isWithinSlot,
+        isActive: slot.isActive
+      });
     });
   };
 
@@ -247,8 +284,8 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
           franja_horaria: selectedSlot.id,
           estado: 'validado',
           url_selfie_validacion: selfieUrl,
-          ubicacion_lat: -12.0464, // Mock coordinates for UNI
-          ubicacion_lng: -77.0428,
+          ubicacion_lat: -11.947391, //  -11.947391, lng: -76.988528 Mock coordinates for UNI
+          ubicacion_lng: -76.988528,
         });
 
       if (error) throw error;
@@ -366,6 +403,14 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
           <p className="text-xl text-gray-300">
             Ruta Este - Universidad Nacional de Ingeniería
           </p>
+          
+          {/* Mostrar hora actual */}
+          <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/20 rounded-full px-4 py-2">
+            <Clock className="h-4 w-4 text-yellow-500" />
+            <span className="text-white font-medium">
+              Hora actual (Perú): {currentPeruTime || 'Cargando...'}
+            </span>
+          </div>
         </div>
 
         {/* Step Content */}
@@ -384,17 +429,28 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
               <MapPin className="mx-auto w-16 h-16 text-yellow-500 mb-4" />
               <h2 className="text-2xl font-bold text-white mb-2">Validación de Ubicación</h2>
               <p className="text-gray-400 mb-4">
-                Confirma que te encuentras en la zona de embarque
+                Confirma que te encuentras dentro de 500m de la zona de embarque UNI
               </p>
               <Badge className="bg-blue-500/20 text-blue-400 mb-4">
                 {selectedSlot.label} - {selectedPassType === 'asiento' ? 'Con Asiento' : 'De Pie'}
               </Badge>
+              
+              {/* Información de la zona de validación */}
+              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <div className="flex items-center justify-center space-x-2 text-sm text-yellow-400">
+                  <MapPin className="h-4 w-4" />
+                  <span>Zona de embarque: Universidad Nacional de Ingeniería</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  Coordenadas: -11.945814, -76.991005 | Radio: 500 metros
+                </p>
+              </div>
             </Card>
 
             <LocationValidator
               onValidation={handleLocationValidation}
-              targetLocation={{ lat: -12.0464, lng: -77.0428 }} // UNI coordinates
-              allowedRadius={100} // 100 meters
+              targetLocation={{ lat: -11.947391, lng: -76.988528 }} // UNI coordinates
+              allowedRadius={500} // 500 metros de radio
             />
 
             <div className="flex space-x-4">

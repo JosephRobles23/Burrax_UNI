@@ -37,6 +37,25 @@ export default function LocationValidator({
     return R * c;
   };
 
+  // Función de testing para debug
+  const testCoordinates = () => {
+    const testLat = -11.947391;
+    const testLng = -76.988528;
+    
+    console.log('🧪 TESTING COORDINATES:');
+    console.log('Test coordinates:', { lat: testLat, lng: testLng });
+    console.log('Target coordinates:', targetLocation);
+    
+    const testDistance = calculateDistance(testLat, testLng, targetLocation.lat, targetLocation.lng);
+    console.log('Distance between test coords and target:', testDistance, 'meters');
+    console.log('Should be valid?', testDistance <= allowedRadius);
+  };
+
+  // Test automático al cargar el componente
+  useEffect(() => {
+    testCoordinates();
+  }, [targetLocation, allowedRadius]);
+
   const validateLocation = async () => {
     setIsLoading(true);
     setLocationStatus('checking');
@@ -45,6 +64,9 @@ export default function LocationValidator({
       if (!navigator.geolocation) {
         throw new Error('Geolocalización no soportada por este navegador');
       }
+
+      console.log('🎯 TARGET LOCATION:', targetLocation);
+      console.log('📏 ALLOWED RADIUS:', allowedRadius);
 
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
         navigator.geolocation.getCurrentPosition(
@@ -63,6 +85,9 @@ export default function LocationValidator({
         lng: position.coords.longitude,
       };
 
+      console.log('📍 USER LOCATION:', userLocation);
+      console.log('🎯 TARGET LOCATION:', targetLocation);
+
       setCurrentLocation(userLocation);
 
       const distanceToTarget = calculateDistance(
@@ -72,22 +97,29 @@ export default function LocationValidator({
         targetLocation.lng
       );
 
+      console.log('📏 CALCULATED DISTANCE:', distanceToTarget, 'metros');
+      console.log('✅ ALLOWED RADIUS:', allowedRadius, 'metros');
+      console.log('🔍 IS WITHIN RADIUS?:', distanceToTarget <= allowedRadius);
+
       setDistance(distanceToTarget);
 
       const isWithinRadius = distanceToTarget <= allowedRadius;
       
       if (isWithinRadius) {
+        console.log('✅ VALIDATION SUCCESS - Location is valid');
         setLocationStatus('valid');
         toast.success('Ubicación validada correctamente');
         onValidation(true, userLocation);
       } else {
+        console.log('❌ VALIDATION FAILED - Location is outside radius');
+        console.log(`Distance: ${distanceToTarget}m, Max allowed: ${allowedRadius}m`);
         setLocationStatus('invalid');
         toast.error(`Debes estar dentro de ${allowedRadius}m de la zona de embarque`);
         onValidation(false);
       }
 
     } catch (error: any) {
-      console.error('Error getting location:', error);
+      console.error('❌ ERROR getting location:', error);
       setLocationStatus('invalid');
       
       if (error.code === 1) {
@@ -103,6 +135,47 @@ export default function LocationValidator({
       onValidation(false);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Función de testing manual con coordenadas exactas
+  const testExactCoordinates = () => {
+    console.log('🔬 TESTING WITH EXACT COORDINATES');
+    
+    const testLocation = {
+      lat: -11.947391,
+      lng: -76.988528,
+    };
+
+    setCurrentLocation(testLocation);
+
+    const distanceToTarget = calculateDistance(
+      testLocation.lat,
+      testLocation.lng,
+      targetLocation.lat,
+      targetLocation.lng
+    );
+
+    console.log('📍 TEST LOCATION:', testLocation);
+    console.log('🎯 TARGET LOCATION:', targetLocation);
+    console.log('📏 DISTANCE:', distanceToTarget, 'metros');
+    console.log('✅ ALLOWED RADIUS:', allowedRadius, 'metros');
+    console.log('🔍 IS WITHIN RADIUS?:', distanceToTarget <= allowedRadius);
+
+    setDistance(distanceToTarget);
+
+    const isWithinRadius = distanceToTarget <= allowedRadius;
+    
+    if (isWithinRadius) {
+      console.log('✅ TEST SUCCESS - Location would be valid');
+      setLocationStatus('valid');
+      toast.success('✅ Test: Ubicación sería válida');
+      onValidation(true, testLocation);
+    } else {
+      console.log('❌ TEST FAILED - Location would be outside radius');
+      setLocationStatus('invalid');
+      toast.error(`❌ Test: Distancia ${Math.round(distanceToTarget)}m > ${allowedRadius}m`);
+      onValidation(false);
     }
   };
 
@@ -213,6 +286,15 @@ export default function LocationValidator({
                 <span>Validar Mi Ubicación</span>
               </div>
             )}
+          </Button>
+
+          {/* Botón de testing para debug */}
+          <Button
+            onClick={testExactCoordinates}
+            variant="outline"
+            className="w-full bg-yellow-600/20 border-yellow-500 text-yellow-400 hover:bg-yellow-600/30"
+          >
+            🧪 Test con Coordenadas Exactas
           </Button>
 
           <div className="text-xs text-gray-500 space-y-1">

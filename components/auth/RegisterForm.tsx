@@ -10,8 +10,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from 'sonner';
-import { UserPlus, Camera, Upload } from 'lucide-react';
-import CameraCapture from './CameraCapture';
+import { UserPlus, Camera, Upload, CheckCircle } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
+import { DocumentUploadCard } from '@/components/documents';
 import OCRValidation from './OCRValidation';
 
 const registerSchema = z.object({
@@ -74,14 +75,29 @@ export default function RegisterForm() {
     }));
   };
 
-  const checkDniExists = async (dni: string) => {
-    const { data, error } = await supabase
-      .from('users')
-      .select('dni')
-      .eq('dni', dni)
-      .single();
+  const handleImageRemove = (type: 'selfie' | 'dni' | 'carnet') => {
+    setCapturedImages(prev => ({
+      ...prev,
+      [type]: null,
+    }));
+  };
 
-    return !error && data;
+  const checkDniExists = async (dni: string) => {
+    try {
+      const { data, error } = await supabase.rpc('check_dni_exists', {
+        dni_input: dni
+      });
+
+      if (error) {
+        console.error('Error checking DNI:', error);
+        return false;
+      }
+
+      return data; // Retorna true si existe, false si no existe
+    } catch (error) {
+      console.error('Error checking DNI:', error);
+      return false;
+    }
   };
 
   const uploadImage = async (imageData: string, fileName: string, userId: string) => {
@@ -123,60 +139,137 @@ export default function RegisterForm() {
     }
 
     if (currentStep === 2) {
-      if (!capturedImages.selfie || !capturedImages.dni || !capturedImages.carnet) {
-        toast.error('Todas las fotos son requeridas');
+      if (!capturedImages.selfie || !capturedImages.carnet) {
+        toast.error('La foto del rostro y del carnet universitario son requeridas');
         return;
       }
+      // Go directly to OCR validation without creating user yet
       setShowOCRValidation(true);
       return;
     }
 
-    // Final registration
+    // This should not be reached directly anymore
+    // Final registration happens after OCR validation
+  };
+
+  const completeRegistration = async () => {
     setIsLoading(true);
+    
     try {
-      // Create auth user
+      const formData = getValues();
+      
+      // Verificar si el DNI o código ya existen antes de proceder
+      const { data: existingUsers, error: checkError } = await supabase
+        .from('users')
+        .select('dni, codigo')
+        .or(`dni.eq.${formData.dni},codigo.eq.${formData.codigo}`);
+
+      if (checkError) {
+        console.error('Error checking existing users:', checkError);
+      }
+
+      if (existingUsers && existingUsers.length > 0) {
+        const existingDni = existingUsers.find(u => u.dni === formData.dni);
+        const existingCodigo = existingUsers.find(u => u.codigo === formData.codigo);
+        
+        if (existingDni) {
+          throw new Error('Este DNI ya está registrado en el sistema');
+        }
+        if (existingCodigo) {
+          throw new Error('Este código de estudiante ya está registrado en el sistema');
+        }
+      }
+      
+      // Create auth user only after OCR validation and verification
       const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: data.email,
-        password: data.password,
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            nombres: formData.nombres,
+            apellidos: formData.apellidos,
+            dni: formData.dni,
+            facultad: formData.facultad,
+            carrera: formData.carrera,
+            codigo: formData.codigo
+          }
+        }
       });
 
-      if (authError || !authData.user) {
-        throw new Error(authError?.message || 'Error creating user');
+      if (authError) {
+        if (authError.message.includes('User already registered')) {
+          throw new Error('Este email ya está registrado. Intenta iniciar sesión o usa otro email.');
+        }
+        throw new Error(authError.message || 'Error creando la cuenta de usuario');
+      }
+
+      if (!authData.user) {
+        throw new Error('No se pudo crear la cuenta de usuario');
       }
 
       const userId = authData.user.id;
 
-      // Upload images
-      const [selfieUrl, dniUrl, carnetUrl] = await Promise.all([
-        uploadImage(capturedImages.selfie!, `selfie-${Date.now()}.jpg`, userId),
-        uploadImage(capturedImages.dni!, `dni-${Date.now()}.jpg`, userId),
-        uploadImage(capturedImages.carnet!, `carnet-${Date.now()}.jpg`, userId),
-      ]);
+      // Upload images to final location
+      let selfieUrl, carnetUrl;
+      try {
+        [selfieUrl, carnetUrl] = await Promise.all([
+          uploadImage(capturedImages.selfie!, `selfie-${Date.now()}.jpg`, userId),
+          uploadImage(capturedImages.carnet!, `carnet-${Date.now()}.jpg`, userId),
+        ]);
+      } catch (uploadError) {
+        console.error('Error uploading images:', uploadError);
+        throw new Error('Error subiendo las imágenes. Inténtalo de nuevo.');
+      }
 
-      // Insert user data
+      // Insert user data using insert instead of upsert to avoid conflicts
       const { error: insertError } = await supabase
         .from('users')
         .insert({
           id: userId,
-          nombres: data.nombres,
-          apellidos: data.apellidos,
-          dni: data.dni,
-          facultad: data.facultad,
-          carrera: data.carrera,
-          codigo: data.codigo,
+          nombres: formData.nombres,
+          apellidos: formData.apellidos,
+          dni: formData.dni,
+          facultad: formData.facultad,
+          carrera: formData.carrera,
+          codigo: formData.codigo,
           url_selfie: selfieUrl,
-          url_dni: dniUrl,
+          url_dni: null, // No longer capturing DNI separately
           url_carnet: carnetUrl,
         });
 
       if (insertError) {
-        throw insertError;
+        console.error('Database insert error:', insertError);
+        
+        // Provide more specific error messages
+        if (insertError.code === '23505') { // Unique constraint violation
+          if (insertError.message.includes('dni')) {
+            throw new Error('Este DNI ya está registrado en el sistema');
+          }
+          if (insertError.message.includes('codigo')) {
+            throw new Error('Este código de estudiante ya está registrado en el sistema');
+          }
+          throw new Error('Los datos proporcionados ya están registrados en el sistema');
+        }
+        
+        throw new Error(insertError.message || 'Error guardando los datos del usuario');
       }
 
-      toast.success('¡Registro completado exitosamente!');
+      toast.success('¡Registro completado exitosamente! Revisa tu email para confirmar tu cuenta.');
+      setCurrentStep(3);
+      
     } catch (error: any) {
       console.error('Registration error:', error);
-      toast.error(error.message || 'Error en el registro');
+      
+      // Si hay un error, intentar limpiar la cuenta auth creada
+      if (error.message && !error.message.includes('DNI') && !error.message.includes('código') && !error.message.includes('email')) {
+        try {
+          await supabase.auth.signOut();
+        } catch (signOutError) {
+          console.error('Error signing out after failed registration:', signOutError);
+        }
+      }
+      
+      toast.error(error.message || 'Error en el registro. Inténtalo de nuevo.');
     } finally {
       setIsLoading(false);
     }
@@ -185,8 +278,8 @@ export default function RegisterForm() {
   const handleOCRValidation = (isValid: boolean) => {
     setShowOCRValidation(false);
     if (isValid) {
-      setCurrentStep(3);
-      handleSubmit(onSubmit)();
+      // Only create user after successful OCR validation
+      completeRegistration();
     } else {
       toast.error('La validación OCR falló. Verifica que los datos coincidan.');
     }
@@ -195,33 +288,107 @@ export default function RegisterForm() {
   if (showOCRValidation) {
     return (
       <OCRValidation
-        dniImage={capturedImages.dni!}
         carnetImage={capturedImages.carnet!}
         expectedDni={watchedDni}
         expectedName={`${getValues('nombres')} ${getValues('apellidos')}`}
+        expectedCodigo={getValues('codigo')}
         onValidation={handleOCRValidation}
       />
     );
   }
 
+  // Success screen after registration
+  if (currentStep === 3) {
+    return (
+      <div className="text-center space-y-6">
+        <div className="flex justify-center">
+          <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center">
+            <CheckCircle className="h-12 w-12 text-green-500" />
+          </div>
+        </div>
+        
+        <div className="space-y-2">
+          <h3 className="text-2xl font-bold text-white">¡Registro Exitoso!</h3>
+          <p className="text-gray-400 max-w-md mx-auto">
+            Tu cuenta ha sido creada exitosamente. Hemos enviado un enlace de confirmación a tu correo electrónico.
+          </p>
+        </div>
+
+        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4 text-left">
+          <h4 className="font-semibold text-yellow-400 mb-2">Próximos pasos:</h4>
+          <ul className="text-sm text-gray-300 space-y-1">
+            <li>• Revisa tu bandeja de entrada de correo</li>
+            <li>• Haz clic en el enlace de confirmación</li>
+            <li>• Una vez confirmado, podrás iniciar sesión</li>
+          </ul>
+        </div>
+
+        <Button
+          onClick={() => window.location.reload()}
+          className="golden-button"
+        >
+          Volver al Inicio de Sesión
+        </Button>
+      </div>
+    );
+  }
+
   if (currentStep === 2) {
+    const completedDocuments = [capturedImages.selfie, capturedImages.carnet].filter(Boolean).length;
+    const isComplete = completedDocuments === 2;
+
     return (
       <div className="space-y-6">
         <div className="text-center mb-6">
           <h3 className="text-xl font-bold text-white mb-2">Captura de Documentos</h3>
-          <p className="text-gray-400">Toma las fotos requeridas para completar tu registro</p>
+          <p className="text-gray-400">Toma una selfie y una foto clara de tu carnet universitario (que muestre DNI y código)</p>
         </div>
 
-        <CameraCapture
-          onImageCapture={handleImageCapture}
-          capturedImages={capturedImages}
-        />
+        {/* Progress Indicator */}
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center space-x-2 text-white">
+            <span className="text-lg font-medium">
+              Progreso: {completedDocuments}/2
+            </span>
+            {isComplete && <CheckCircle className="h-5 w-5 text-green-500" />}
+          </div>
+          <Progress 
+            value={(completedDocuments / 2) * 100} 
+            className="w-full max-w-md mx-auto"
+          />
+        </div>
+
+        {/* Document Upload Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+          <DocumentUploadCard
+            type="selfie"
+            title="Selfie"
+            description="Toma una foto de tu rostro"
+            icon="👤"
+            capturedImage={capturedImages.selfie}
+            onImageCapture={handleImageCapture}
+            onImageRemove={handleImageRemove}
+            disabled={isLoading}
+          />
+          
+          <DocumentUploadCard
+            type="carnet"
+            title="Carnet Universitario"
+            description="Debe mostrar claramente tu DNI y código"
+            icon="🎓"
+            capturedImage={capturedImages.carnet}
+            onImageCapture={handleImageCapture}
+            onImageRemove={handleImageRemove}
+            disabled={isLoading}
+          />
+        </div>
 
         <div className="flex space-x-4">
           <Button
             type="button"
             variant="outline"
             onClick={() => setCurrentStep(1)}
+            disabled={isLoading}
             className="flex-1 border-white/20 text-white hover:bg-white/10"
           >
             Anterior
@@ -229,10 +396,20 @@ export default function RegisterForm() {
           <Button
             type="button"
             onClick={handleSubmit(onSubmit)}
-            disabled={!capturedImages.selfie || !capturedImages.dni || !capturedImages.carnet}
+            disabled={!isComplete || isLoading}
             className="flex-1 golden-button"
           >
-            Validar Documentos
+            {isLoading ? (
+              <div className="flex items-center space-x-2">
+                <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
+                <span>Validando...</span>
+              </div>
+            ) : (
+              <div className="flex items-center space-x-2">
+                <Upload className="h-4 w-4" />
+                <span>Validar Documentos</span>
+              </div>
+            )}
           </Button>
         </div>
       </div>
