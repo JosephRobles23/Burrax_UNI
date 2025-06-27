@@ -29,128 +29,54 @@ export default function OCRValidation({
   const [currentStep, setCurrentStep] = useState('');
   const [extractedData, setExtractedData] = useState({
     dniFromCarnet: '',
-    nameFromCarnet: '',
     codigoFromCarnet: '',
   });
   const [validationResult, setValidationResult] = useState<{
     dniMatch: boolean;
-    nameMatch: boolean;
     codigoMatch: boolean;
     overall: boolean;
   } | null>(null);
   const [manualEntry, setManualEntry] = useState({
     dniFromCarnet: '',
-    nameFromCarnet: '',
     codigoFromCarnet: '',
   });
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [ocrError, setOcrError] = useState<string | null>(null);
 
-  // Helper function to extract text data from carnet using improved regex patterns
+  // Helper function to extract text data from carnet using regex patterns
   const extractTextData = (carnetText: string) => {
     console.log('Texto extraído del carnet:', carnetText);
     
-    // Normalizar texto para mejor procesamiento
-    const normalizedText = carnetText.replace(/\s+/g, ' ').trim();
-    console.log('Texto normalizado:', normalizedText);
-    
-         // Extract DNI - Múltiples patrones para mayor precisión
-     let dniFromCarnet = '';
-     const dniPatterns = [
-       /DNI\s*:?\s*(\d{8})/gi,                    // DNI: 12345678
-       /D\.?N\.?I\.?\s*:?\s*(\d{8})/gi,          // D.N.I: 12345678
-       /DOCUMENTO\s*:?\s*(\d{8})/gi,             // DOCUMENTO: 12345678
-       /(?:^|\s)(\d{8})(?=\s|$)/g               // 8 dígitos standalone
-     ];
-     
-     for (const pattern of dniPatterns) {
-       pattern.lastIndex = 0; // Reset regex state
-       let match;
-       while ((match = pattern.exec(normalizedText)) !== null) {
-         const dni = match[1];
-         if (dni && dni.length === 8) {
-           dniFromCarnet = dni;
-           console.log(`DNI encontrado con patrón ${pattern}:`, dni);
-           break;
-         }
-       }
-       if (dniFromCarnet) break;
-     }
+    // Extract DNI (8 digits after "DNI" keyword)
+    const dniPattern = /DNI\s*:?\s*(\d{8})/i;
+    const dniMatch = carnetText.match(dniPattern);
+    const dniFromCarnet = dniMatch ? dniMatch[1] : '';
 
-         // Extract codigo - Múltiples patrones para código estudiantil
-     let codigoFromCarnet = '';
-     const codigoPatterns = [
-       /C[óo]digo\s*:?\s*(\d{7,9}[A-Z]?)/gi,     // Código: 20222035J
-       /CODE?\s*:?\s*(\d{7,9}[A-Z]?)/gi,         // CODE: 20222035J  
-       /CODIGO\s*:?\s*(\d{7,9}[A-Z]?)/gi,        // CODIGO: 20222035J
-       /(?:^|\s)(\d{8}[A-Z])(?=\s|$)/g,         // 20222035J standalone
-       /(?:^|\s)(20\d{6}[A-Z])(?=\s|$)/g        // Patrón específico UNI: 20XXXXXXX
-     ];
-     
-     for (const pattern of codigoPatterns) {
-       pattern.lastIndex = 0; // Reset regex state
-       let match;
-       while ((match = pattern.exec(normalizedText)) !== null) {
-         const codigo = match[1];
-         if (codigo && (codigo.length === 8 || codigo.length === 9)) {
-           codigoFromCarnet = codigo;
-           console.log(`Código encontrado con patrón ${pattern}:`, codigo);
-           break;
-         }
-       }
-       if (codigoFromCarnet) break;
-     }
-
-         // Extract names - Buscar apellidos y nombres
-     let nameFromCarnet = '';
-     const namePatterns = [
-       /Apellidos?\s*:?\s*([A-ZÀ-ÿ\s]+?)(?=\s*Nombres?|$)/gi,
-       /Nombres?\s*:?\s*([A-ZÀ-ÿ\s]+?)(?=\s*Facultad|$)/gi,
-       /ESTUDIANTE\s*:?\s*([A-ZÀ-ÿ\s]+)/gi,
-       /NOMBRE\s*:?\s*([A-ZÀ-ÿ\s]+)/gi
-     ];
-     
-     let apellidos = '';
-     let nombres = '';
-     
-     for (const pattern of namePatterns) {
-       pattern.lastIndex = 0; // Reset regex state
-       let match;
-       while ((match = pattern.exec(normalizedText)) !== null) {
-         const text = match[1]?.trim();
-         if (text && text.length > 2) {
-           if (pattern.source.includes('Apellidos')) {
-             apellidos = text;
-             console.log('Apellidos encontrados:', text);
-           } else if (pattern.source.includes('Nombres')) {
-             nombres = text;
-             console.log('Nombres encontrados:', text);
-           } else {
-             nameFromCarnet = text;
-             console.log('Nombre completo encontrado:', text);
-           }
-         }
-       }
-     }
+    // Extract codigo from carnet - Solo 8 dígitos (sin letra)
+    let codigoFromCarnet = '';
     
-    // Combinar apellidos y nombres si se encontraron por separado
-    if (apellidos || nombres) {
-      nameFromCarnet = `${nombres} ${apellidos}`.trim();
-    }
+    // Patrón 1: Código seguido de 8 dígitos (con o sin dos puntos)
+    const codigoPattern1 = /(?:CODIGO|CÓDIGO|CODE)\s*:?\s*(\d{8})/i;
+    const codigoMatch1 = carnetText.match(codigoPattern1);
     
-    // Limpiar nombres extraídos
-    if (nameFromCarnet) {
-      nameFromCarnet = nameFromCarnet
-        .replace(/\s+/g, ' ')
-        .replace(/[^\w\sÀ-ÿ]/g, '')
-        .trim();
+    if (codigoMatch1) {
+      codigoFromCarnet = codigoMatch1[1];
+      console.log('Código (8 dígitos) encontrado:', codigoFromCarnet);
+    } else {
+      // Fallback: Buscar cualquier número de 8 dígitos que comience con "202"
+      const codigoPattern2 = /(202\d{5})/g;
+      const codigoMatch2 = carnetText.match(codigoPattern2);
+      
+      if (codigoMatch2 && codigoMatch2[0]) {
+        codigoFromCarnet = codigoMatch2[0];
+        console.log('Código UNI (fallback) encontrado:', codigoFromCarnet);
+      }
     }
 
-    console.log('Datos extraídos finales:', { dniFromCarnet, nameFromCarnet, codigoFromCarnet });
-    
+    console.log('Datos extraídos:', { dniFromCarnet, codigoFromCarnet });
+
     return {
       dniFromCarnet,
-      nameFromCarnet,
       codigoFromCarnet,
     };
   };
@@ -159,17 +85,24 @@ export default function OCRValidation({
   const validateExtractedData = (extracted: typeof extractedData, expectedDni: string, expectedName: string, expectedCodigo: string) => {
     const dniMatch = extracted.dniFromCarnet === expectedDni;
     
-    // Codigo matching (exact match)
-    const codigoMatch = extracted.codigoFromCarnet === expectedCodigo;
+    // Codigo matching - Comparar código extraído con los primeros 8 dígitos del código esperado
+    const codigoBase = expectedCodigo.substring(0, 8); // Tomar solo los primeros 8 caracteres
+    const codigoMatch = extracted.codigoFromCarnet === codigoBase;
     
-    // Solo validamos DNI y Código - el nombre se considera válido automáticamente
-    const nameMatch = true;
+    console.log('Validación:', {
+      dniExtraido: extracted.dniFromCarnet,
+      dniEsperado: expectedDni,
+      dniMatch,
+      codigoExtraido: extracted.codigoFromCarnet,
+      codigoEsperado: expectedCodigo,
+      codigoBase: codigoBase,
+      codigoMatch
+    });
     
     const overall = dniMatch && codigoMatch;
     
     return {
       dniMatch,
-      nameMatch,
       codigoMatch,
       overall,
     };
@@ -183,58 +116,41 @@ export default function OCRValidation({
     const allNumbers = text.match(/\d{8}/g) || [];
     let dniFromCarnet = '';
     
-         // Priorizar números que aparezcan después de ciertos contextos
-     for (const num of allNumbers) {
-       if (num) {
-         const index = text.indexOf(num);
-         const beforeContext = text.substring(Math.max(0, index - 20), index).toLowerCase();
-         
-         if (beforeContext.includes('dni') || beforeContext.includes('documento')) {
-           dniFromCarnet = num;
-           break;
-         }
-       }
-     }
-    
-         // Si no se encontró DNI con contexto, tomar el primer número de 8 dígitos
-     if (!dniFromCarnet && allNumbers.length > 0 && allNumbers[0]) {
-       dniFromCarnet = allNumbers[0];
-     }
-     
-     // Buscar código estudiantil (patrón más flexible)
-     let codigoFromCarnet = '';
-     const codigoMatches = text.match(/20\d{6}[A-Z]?/g) || [];
-     if (codigoMatches.length > 0 && codigoMatches[0]) {
-       codigoFromCarnet = codigoMatches[0];
-     }
-    
-         // Si no se encontró, buscar cualquier secuencia de 8 dígitos + letra
-     if (!codigoFromCarnet) {
-       const codigoAlt = text.match(/\d{8}[A-Z]/g);
-       if (codigoAlt && codigoAlt[0]) {
-         codigoFromCarnet = codigoAlt[0];
-       }
-     }
-    
-    // Extracción básica de nombres
-    let nameFromCarnet = '';
-    const lines = text.split('\n');
-    for (const line of lines) {
-      if (line.length > 5 && line.length < 50 && /^[A-ZÀ-ÿ\s]+$/.test(line.trim())) {
-        const cleanLine = line.trim();
-        if (!cleanLine.includes('UNIVERSIDAD') && !cleanLine.includes('CARNET') && 
-            !cleanLine.includes('PERU') && !cleanLine.includes('INGENIER')) {
-          nameFromCarnet = cleanLine;
+    // Priorizar números que aparezcan después de ciertos contextos
+    for (const num of allNumbers) {
+      if (num) {
+        const index = text.indexOf(num);
+        const beforeContext = text.substring(Math.max(0, index - 20), index).toLowerCase();
+        
+        if (beforeContext.includes('dni') || beforeContext.includes('documento')) {
+          dniFromCarnet = num;
           break;
         }
       }
     }
+   
+    // Si no se encontró DNI con contexto, tomar el primer número de 8 dígitos
+    if (!dniFromCarnet && allNumbers.length > 0 && allNumbers[0]) {
+      dniFromCarnet = allNumbers[0];
+    }
     
-    console.log('Fallback extrajo:', { dniFromCarnet, nameFromCarnet, codigoFromCarnet });
+    // Buscar código estudiantil - Solo 8 dígitos que empiecen con "202"
+    let codigoFromCarnet = '';
+    
+    // Buscar números de 8 dígitos que empiecen con "202" (patrón UNI)
+    const codigoUNI = allNumbers.find(num => 
+      num.startsWith('202') && num.length === 8
+    );
+    
+    if (codigoUNI) {
+      codigoFromCarnet = codigoUNI;
+      console.log('Código UNI (8 dígitos) encontrado:', codigoFromCarnet);
+    }
+   
+    console.log('Fallback extrajo:', { dniFromCarnet, codigoFromCarnet });
     
     return {
       dniFromCarnet,
-      nameFromCarnet,
       codigoFromCarnet,
     };
   };
@@ -315,7 +231,6 @@ export default function OCRValidation({
           
           extractedData = {
             dniFromCarnet: extractedData.dniFromCarnet || fallbackData.dniFromCarnet,
-            nameFromCarnet: extractedData.nameFromCarnet || fallbackData.nameFromCarnet,
             codigoFromCarnet: extractedData.codigoFromCarnet || fallbackData.codigoFromCarnet,
           };
           
@@ -354,16 +269,27 @@ export default function OCRValidation({
 
   const handleManualValidation = () => {
     const dniMatch = manualEntry.dniFromCarnet === expectedDni;
-    const codigoMatch = manualEntry.codigoFromCarnet === expectedCodigo;
     
-    // Solo validamos DNI y Código - el nombre se considera válido automáticamente
-    const nameMatch = true;
+    // Comparar solo los primeros 8 dígitos tanto del código ingresado como del esperado
+    const codigoBaseEsperado = expectedCodigo.substring(0, 8);
+    const codigoBaseIngresado = manualEntry.codigoFromCarnet.substring(0, 8);
+    const codigoMatch = codigoBaseIngresado === codigoBaseEsperado;
+    
+    console.log('Validación manual:', {
+      dniIngresado: manualEntry.dniFromCarnet,
+      dniEsperado: expectedDni,
+      dniMatch,
+      codigoCompletoIngresado: manualEntry.codigoFromCarnet,
+      codigoCompletoEsperado: expectedCodigo,
+      codigoBaseIngresado: codigoBaseIngresado,
+      codigoBaseEsperado: codigoBaseEsperado,
+      codigoMatch
+    });
     
     const overall = dniMatch && codigoMatch;
     
     setValidationResult({
       dniMatch,
-      nameMatch,
       codigoMatch,
       overall,
     });
@@ -374,7 +300,7 @@ export default function OCRValidation({
     } else {
       let errorMsg = 'Los datos no coinciden:';
       if (!dniMatch) errorMsg += ' DNI incorrecto.';
-      if (!codigoMatch) errorMsg += ' Código incorrecto.';
+      if (!codigoMatch) errorMsg += ` Código incorrecto (se comparan los primeros 8 dígitos: esperado ${codigoBaseEsperado}, ingresado ${codigoBaseIngresado}).`;
       toast.error(errorMsg);
     }
   };
@@ -460,7 +386,7 @@ export default function OCRValidation({
             </div>
             <div className="mt-4 p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
               <p className="text-sm text-blue-400">
-                ℹ️ Solo necesitas validar el DNI y Código. El nombre se verifica automáticamente.
+                ℹ️ Ingresa tu código completo (8 números + letra). Solo se validarán los primeros 8 dígitos automáticamente.
               </p>
             </div>
           </Card>
@@ -529,10 +455,10 @@ export default function OCRValidation({
             ) : (
               <XCircle className="h-5 w-5 text-red-500" />
             )}
-            <h4 className="font-semibold text-white">Código</h4>
+            <h4 className="font-semibold text-white">Código (primeros 8 dígitos)</h4>
           </div>
           <p className="text-sm text-gray-400">
-            Esperado: {expectedCodigo}
+            Esperado: {expectedCodigo.substring(0, 8)} (de {expectedCodigo})
           </p>
           <p className="text-sm text-gray-400">
             Extraído: {extractedData.codigoFromCarnet || 'No detectado'}

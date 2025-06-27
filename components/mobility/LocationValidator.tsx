@@ -61,6 +61,7 @@ export default function LocationValidator({
     setLocationStatus('checking');
 
     try {
+      // Verificar soporte de geolocalización
       if (!navigator.geolocation) {
         throw new Error('Geolocalización no soportada por este navegador');
       }
@@ -68,14 +69,39 @@ export default function LocationValidator({
       console.log('🎯 TARGET LOCATION:', targetLocation);
       console.log('📏 ALLOWED RADIUS:', allowedRadius);
 
+      // Verificar permisos antes de hacer la solicitud
+      if ('permissions' in navigator) {
+        try {
+          const permission = await navigator.permissions.query({ name: 'geolocation' });
+          console.log('📍 GPS Permission status:', permission.state);
+          
+          if (permission.state === 'denied') {
+            throw new Error('Permisos de ubicación denegados. Por favor permite el acceso en la configuración del navegador.');
+          }
+        } catch (permError) {
+          console.log('⚠️ Could not check permissions:', permError);
+        }
+      }
+
+      // Obtener ubicación con configuración mejorada
       const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+        const timeoutId = setTimeout(() => {
+          reject(new Error('Tiempo de espera agotado para obtener GPS'));
+        }, 20000); // 20 segundos timeout
+
         navigator.geolocation.getCurrentPosition(
-          resolve,
-          reject,
+          (pos) => {
+            clearTimeout(timeoutId);
+            resolve(pos);
+          },
+          (err) => {
+            clearTimeout(timeoutId);
+            reject(err);
+          },
           {
             enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 60000,
+            timeout: 15000,
+            maximumAge: 30000, // Reducido de 60s a 30s
           }
         );
       });
@@ -87,6 +113,7 @@ export default function LocationValidator({
 
       console.log('📍 USER LOCATION:', userLocation);
       console.log('🎯 TARGET LOCATION:', targetLocation);
+      console.log('📊 GPS Accuracy:', position.coords.accuracy, 'meters');
 
       setCurrentLocation(userLocation);
 
@@ -114,22 +141,29 @@ export default function LocationValidator({
         console.log('❌ VALIDATION FAILED - Location is outside radius');
         console.log(`Distance: ${distanceToTarget}m, Max allowed: ${allowedRadius}m`);
         setLocationStatus('invalid');
-        toast.error(`Debes estar dentro de ${allowedRadius}m de la zona de embarque`);
+        toast.error(`Estás a ${Math.round(distanceToTarget)}m de la zona de embarque. Debes estar dentro de ${allowedRadius}m.`);
         onValidation(false);
       }
 
     } catch (error: any) {
       console.error('❌ ERROR getting location:', error);
+      console.error('Error details:', {
+        code: error.code,
+        message: error.message,
+        type: error.constructor.name
+      });
+      
       setLocationStatus('invalid');
       
-      if (error.code === 1) {
-        toast.error('Permiso de ubicación denegado. Habilita la ubicación para continuar.');
+      // Manejo mejorado de errores
+      if (error.code === 1 || error.message?.includes('denied')) {
+        toast.error('Permisos de ubicación denegados. Verifica la configuración de tu navegador y vuelve a intentar.');
       } else if (error.code === 2) {
-        toast.error('No se pudo obtener la ubicación. Verifica tu conexión.');
-      } else if (error.code === 3) {
-        toast.error('Tiempo de espera agotado. Intenta nuevamente.');
+        toast.error('No se pudo obtener tu ubicación. Verifica que tengas GPS/WiFi activado.');
+      } else if (error.code === 3 || error.message?.includes('timeout')) {
+        toast.error('GPS muy lento. Asegúrate de estar en un lugar con buena señal e intenta nuevamente.');
       } else {
-        toast.error('Error al obtener la ubicación');
+        toast.error(`Error de ubicación: ${error.message || 'Error desconocido'}`);
       }
       
       onValidation(false);
@@ -176,6 +210,33 @@ export default function LocationValidator({
       setLocationStatus('invalid');
       toast.error(`❌ Test: Distancia ${Math.round(distanceToTarget)}m > ${allowedRadius}m`);
       onValidation(false);
+    }
+  };
+
+  // Función para verificar permisos de ubicación
+  const checkLocationPermissions = async () => {
+    try {
+      if ('permissions' in navigator) {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        console.log('📍 Current permission state:', permission.state);
+        
+        if (permission.state === 'granted') {
+          toast.success('✅ Permisos de ubicación: Concedidos');
+        } else if (permission.state === 'denied') {
+          toast.error('❌ Permisos de ubicación: Denegados. Ve a configuración del navegador para habilitarlos.');
+        } else {
+          toast.info('⚠️ Permisos de ubicación: Pendientes. Se solicitarán al validar.');
+        }
+        
+        return permission.state;
+      } else {
+        toast.info('ℹ️ API de permisos no disponible en este navegador');
+        return 'unknown';
+      }
+    } catch (error) {
+      console.error('Error checking permissions:', error);
+      toast.error('Error al verificar permisos');
+      return 'error';
     }
   };
 
@@ -297,10 +358,21 @@ export default function LocationValidator({
             🧪 Test con Coordenadas Exactas
           </Button>
 
+          {/* Botón para verificar permisos */}
+          <Button
+            onClick={checkLocationPermissions}
+            variant="outline"
+            className="w-full bg-blue-600/20 border-blue-500 text-blue-400 hover:bg-blue-600/30"
+          >
+            🔒 Verificar Permisos GPS
+          </Button>
+
           <div className="text-xs text-gray-500 space-y-1">
             <p>• Asegúrate de tener el GPS activado</p>
             <p>• Permite el acceso a la ubicación cuando se solicite</p>
             <p>• Debes estar dentro de {allowedRadius}m de la zona de embarque</p>
+            <p>• Si falla: Refresca la página y vuelve a intentar</p>
+            <p>• En Chrome: Configura el sitio como &quot;Permitir ubicación&quot;</p>
           </div>
         </div>
       </Card>
