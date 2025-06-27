@@ -19,13 +19,15 @@ import {
   UserCheck,
   Calendar,
   Settings,
-  Crown
+  Crown,
+  ArrowRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import LocationValidator from './LocationValidator';
 import SelfieCapture from './SelfieCapture';
 import TimelineSchedule from './TimelineSchedule';
 import ScheduleConfigModal from '@/components/admin/ScheduleConfigModal';
+import SeatRedistribution from './SeatRedistribution';
 
 interface ReservationSystemProps {
   user: User;
@@ -106,6 +108,7 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
   
   // Admin state
   const [showConfigModal, setShowConfigModal] = useState(false);
+  const [showRedistribution, setShowRedistribution] = useState(false);
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
   const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
@@ -414,6 +417,12 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
     fetchReservationCounts();
   };
 
+  const handleRedistributionComplete = () => {
+    fetchScheduleConfig();
+    fetchReservationCounts();
+    toast.info('Datos actualizados tras redistribución de asientos');
+  };
+
   if (hasReservationToday) {
     const reservation = userReservations[0];
     const slot = TIME_SLOTS.find(s => s.id === reservation.franja_horaria);
@@ -501,7 +510,7 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
           
           {/* Admin Controls */}
           {isAdmin && (
-            <div className="flex justify-center">
+            <div className="flex justify-center space-x-4">
               <Button
                 onClick={() => setShowConfigModal(true)}
                 className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 hover:bg-yellow-500/30 transition-all duration-200"
@@ -509,6 +518,15 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
                 <Settings className="h-4 w-4 mr-2" />
                 <Crown className="h-4 w-4 mr-2" />
                 Configurar Horarios
+              </Button>
+              
+              <Button
+                onClick={() => setShowRedistribution(!showRedistribution)}
+                className="bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500/30 transition-all duration-200"
+              >
+                <ArrowRight className="h-4 w-4 mr-2" />
+                <Crown className="h-4 w-4 mr-2" />
+                {showRedistribution ? 'Ocultar' : 'Mostrar'} Redistribución
               </Button>
             </div>
           )}
@@ -531,12 +549,25 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
                 <p className="text-gray-400">Cargando configuración de horarios...</p>
               </Card>
             ) : (
-              <TimelineSchedule
-                timeSlots={timeSlots}
-                reservationCounts={reservationCounts}
-                onSlotSelection={handleSlotSelection}
-                getSlotAvailability={getSlotAvailability}
-              />
+              <>
+                <TimelineSchedule
+                  timeSlots={timeSlots}
+                  reservationCounts={reservationCounts}
+                  onSlotSelection={handleSlotSelection}
+                  getSlotAvailability={getSlotAvailability}
+                />
+                
+                {/* Seat Redistribution Component - Only for Admins */}
+                {isAdmin && showRedistribution && (
+                  <div className="mt-8">
+                    <SeatRedistribution
+                      timeSlots={timeSlots}
+                      reservationCounts={reservationCounts}
+                      onRedistributionComplete={handleRedistributionComplete}
+                    />
+                  </div>
+                )}
+              </>
             )}
           </>
         )}
