@@ -201,54 +201,45 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
     fetchUserReservations();
     updateCurrentTime();
     
-    // Update every minute
-    const interval = setInterval(() => {
-      updateActiveTimeSlots();
-      updateCurrentTime();
+    // Update time every minute
+    const timeInterval = setInterval(updateCurrentTime, 60000);
+    
+    // Update data every 30 seconds
+    const dataInterval = setInterval(() => {
       fetchReservationCounts();
-    }, 60000);
+      fetchUserReservations();
+    }, 30000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(timeInterval);
+      clearInterval(dataInterval);
+    };
   }, []);
 
-  useEffect(() => {
-    if (timeSlots.length > 0) {
-      updateActiveTimeSlots();
-    }
-  }, [timeSlots]);
-
   const updateActiveTimeSlots = () => {
-    if (timeSlots.length === 0) return;
-    
-    // Obtener hora actual en zona horaria de Perú (GMT-5)
     const now = new Date();
     const peruTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Lima"}));
-    const currentTime = peruTime.getHours() * 100 + peruTime.getMinutes();
+    const currentTime = peruTime.toTimeString().slice(0, 5); // HH:MM format
     
-    setTimeSlots(prevSlots => prevSlots.map(slot => {
-      const [startHour, startMin] = slot.startTime.split(':').map(Number);
-      const [endHour, endMin] = slot.endTime.split(':').map(Number);
-      const startTime = startHour * 100 + startMin;
-      const endTime = endHour * 100 + endMin;
+    const updatedSlots = timeSlots.map(slot => {
+      const slotStart = slot.startTime;
+      const slotEnd = slot.endTime;
       
-      // Active if current time is within 15 minutes before start time
-      const preStartTime = startTime - 15;
+      // Check if current time is within slot time range
+      const isInRange = currentTime >= slotStart && currentTime <= slotEnd;
       
-      // Un slot está activo si:
-      // 1. Estamos dentro de los 15 minutos antes del horario de inicio, O
-      // 2. Estamos dentro del horario del slot
-      const isWithinPreStart = currentTime >= preStartTime && currentTime < startTime;
-      const isWithinSlot = currentTime >= startTime && currentTime <= endTime;
-      
-      const isActive = isWithinPreStart || isWithinSlot;
-      
-      return { ...slot, isActive };
-    }));
+      return {
+        ...slot,
+        isActive: isInRange
+      };
+    });
+    
+    setTimeSlots(updatedSlots);
   };
 
   const fetchReservationCounts = async () => {
     try {
-      const { data, error } = await supabase.rpc('get_reservation_counts');
+      const { data, error } = await supabase.rpc('get_current_reservations');
       if (error) throw error;
       setReservationCounts(data || []);
     } catch (error) {
@@ -258,14 +249,12 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
 
   const fetchUserReservations = async () => {
     try {
-      const today = new Date().toISOString().split('T')[0];
       const { data, error } = await supabase
         .from('reservas')
         .select('*')
-        .eq('id_usuario', user.id)
-        .gte('created_at', `${today}T00:00:00`)
-        .order('created_at', { ascending: false });
-
+        .eq('user_id', user.id)
+        .order('fecha_reserva', { ascending: false });
+      
       if (error) throw error;
       setUserReservations(data || []);
     } catch (error) {
@@ -275,29 +264,25 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
 
   const getSlotAvailability = (slot: TimeSlot) => {
     const counts = reservationCounts.find(c => c.franja_horaria === slot.id);
+    
     if (!counts) {
       return {
         availableSeats: slot.maxSeats,
         availableStanding: slot.maxStanding,
         totalAvailable: slot.maxSeats + slot.maxStanding,
-        isFullyBooked: false,
-        canBookSeat: slot.maxSeats > 0,
-        canBookStanding: slot.maxStanding > 0,
+        occupiedSeats: 0,
+        occupiedStanding: 0,
+        totalOccupied: 0
       };
     }
-
-    const availableSeats = Math.max(0, slot.maxSeats - counts.asientos_ocupados);
-    const availableStanding = Math.max(0, slot.maxStanding - counts.parados_ocupados);
-    const totalAvailable = availableSeats + availableStanding;
-    const isFullyBooked = totalAvailable === 0;
-
+    
     return {
-      availableSeats,
-      availableStanding,
-      totalAvailable,
-      isFullyBooked,
-      canBookSeat: availableSeats > 0 && slot.maxSeats > 0,
-      canBookStanding: availableStanding > 0 && slot.maxStanding > 0,
+      availableSeats: Math.max(0, slot.maxSeats - counts.asientos_ocupados),
+      availableStanding: Math.max(0, slot.maxStanding - counts.parados_ocupados),
+      totalAvailable: Math.max(0, (slot.maxSeats + slot.maxStanding) - counts.total_reservas),
+      occupiedSeats: counts.asientos_ocupados,
+      occupiedStanding: counts.parados_ocupados,
+      totalOccupied: counts.total_reservas
     };
   };
 
@@ -310,21 +295,21 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
     }
     
     if (passType === 'parado' && availability.availableStanding <= 0) {
-      toast.error('No hay cupos para ir parado en este horario');
+      toast.error('No hay espacios de pie disponibles en este horario');
       return;
     }
-
+    
     setSelectedSlot(slot);
     setSelectedPassType(passType);
     setCurrentStep('location');
   };
 
   const handleLocationValidation = (isValid: boolean, location?: { lat: number; lng: number }) => {
-    if (isValid && location) {
+    if (isValid) {
       setLocationValidated(true);
       setCurrentStep('selfie');
     } else {
-      toast.error('Debes estar en la zona de embarque para hacer una reserva');
+      toast.error('Debe estar dentro del área de la universidad para hacer una reserva');
     }
   };
 
@@ -335,12 +320,13 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
 
   const uploadSelfie = async (imageData: string, userId: string) => {
     try {
+      // Convert base64 to blob
       const response = await fetch(imageData);
       const blob = await response.blob();
-      const fileName = `validation-selfie-${Date.now()}.jpg`;
 
+      const fileName = `selfie-reserva-${Date.now()}.jpg`;
       const { data, error } = await supabase.storage
-        .from('user-documents')
+        .from('reservation-selfies')
         .upload(`${userId}/${fileName}`, blob, {
           cacheControl: '3600',
           upsert: false,
@@ -349,7 +335,7 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
       if (error) throw error;
 
       const { data: { publicUrl } } = supabase.storage
-        .from('user-documents')
+        .from('reservation-selfies')
         .getPublicUrl(data.path);
 
       return publicUrl;
@@ -361,23 +347,21 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
 
   const confirmReservation = async () => {
     if (!selectedSlot || !selfieData) return;
-
+    
     setIsLoading(true);
     try {
-      // Upload validation selfie
+      // Upload selfie first
       const selfieUrl = await uploadSelfie(selfieData, user.id);
-
+      
       // Create reservation
       const { error } = await supabase
         .from('reservas')
         .insert({
-          id_usuario: user.id,
-          tipo_pase: selectedPassType,
+          user_id: user.id,
           franja_horaria: selectedSlot.id,
-          estado: 'validado',
-          url_selfie_validacion: selfieUrl,
-          ubicacion_lat: -12.012883, //  Nueva zona de embarque UNI -- casa : -11.947391, lng: -76.988528
-          ubicacion_lng: -76.996109,
+          tipo_pase: selectedPassType,
+          url_selfie_reserva: selfieUrl,
+          estado: 'confirmada'
         });
 
       if (error) throw error;
@@ -385,10 +369,7 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
       toast.success('¡Reserva confirmada exitosamente!');
       
       // Reset state and refresh data
-      setCurrentStep('timeline');
-      setSelectedSlot(null);
-      setSelfieData(null);
-      setLocationValidated(false);
+      resetReservation();
       fetchReservationCounts();
       fetchUserReservations();
       
@@ -403,293 +384,132 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
   const resetReservation = () => {
     setCurrentStep('timeline');
     setSelectedSlot(null);
-    setSelfieData(null);
-    setLocationValidated(false);
     setSelectedPassType('asiento');
+    setLocationValidated(false);
+    setSelfieData(null);
   };
-
-  // Check if user already has a reservation today
-  const hasReservationToday = userReservations.length > 0;
 
   const handleConfigUpdated = () => {
     fetchScheduleConfig();
-    toast.success('Horarios actualizados. Refrescando disponibilidad...');
-    fetchReservationCounts();
+    setShowConfigModal(false);
   };
 
   const handleRedistributionComplete = () => {
-    fetchScheduleConfig();
     fetchReservationCounts();
-    toast.info('Datos actualizados tras redistribución de asientos');
+    setShowRedistribution(false);
   };
 
-  if (hasReservationToday) {
-    const reservation = userReservations[0];
-    const slot = TIME_SLOTS.find(s => s.id === reservation.franja_horaria);
-    
+  if (currentStep === 'location') {
     return (
-      <div className="min-h-screen bg-black p-4">
-        <div className="max-w-4xl mx-auto space-y-8">
-          <div className="text-center space-y-4">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-green-500 to-green-600 mb-4 pulse-gold">
-              <CheckCircle className="h-10 w-10 text-white" />
-            </div>
-            <h1 className="text-4xl font-bold text-white">
-              ¡Reserva <span className="gradient-text">Confirmada</span>!
-            </h1>
-            <p className="text-xl text-gray-300">
-              Ya tienes una reserva activa para hoy
-            </p>
-          </div>
-
-          <Card className="glass-card p-8 text-center">
-            <div className="space-y-6">
-              <div className="flex items-center justify-center space-x-4">
-                <Bus className="h-8 w-8 text-yellow-500" />
-                <div>
-                  <h2 className="text-2xl font-bold text-white">Ruta Este</h2>
-                  <p className="text-gray-400">Universidad Nacional de Ingeniería</p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="text-center">
-                  <Clock className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Horario</p>
-                  <p className="text-white font-semibold">{slot?.label}</p>
-                </div>
-                
-                <div className="text-center">
-                  <UserCheck className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Tipo de Pase</p>
-                  <Badge className={`${reservation.tipo_pase === 'asiento' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'}`}>
-                    {reservation.tipo_pase === 'asiento' ? 'Con Asiento' : 'De Pie'}
-                  </Badge>
-                </div>
-                
-                <div className="text-center">
-                  <Calendar className="h-6 w-6 text-yellow-500 mx-auto mb-2" />
-                  <p className="text-sm text-gray-400">Estado</p>
-                  <Badge className="bg-green-500/20 text-green-400">
-                    {reservation.estado === 'validado' ? 'Validado' : 'Pendiente'}
-                  </Badge>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-white/10">
-                <p className="text-gray-400 mb-4">
-                  Presenta este comprobante al conductor del bus
-                </p>
-                <div className="text-xs text-gray-500">
-                  ID de Reserva: {reservation.id.slice(0, 8)}...
-                </div>
-              </div>
-            </div>
-          </Card>
+      <div className="space-y-4 sm:space-y-6">
+        <div className="text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Validación de Ubicación</h2>
+          <p className="text-gray-400 text-sm sm:text-base px-4">
+            Verifica que te encuentras dentro del campus de la UNI
+          </p>
         </div>
+        
+        <Card className="glass-card p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0">
+            <div className="text-center sm:text-left">
+              <h3 className="font-semibold text-white text-base sm:text-lg">{selectedSlot?.label}</h3>
+              <p className="text-gray-400 text-sm">
+                Tipo: <span className="text-yellow-400">{selectedPassType === 'asiento' ? 'Asiento' : 'De pie'}</span>
+              </p>
+            </div>
+            <Button
+              onClick={resetReservation}
+              variant="outline"
+              size="sm"
+              className="border-gray-500 text-gray-300 hover:bg-gray-800"
+            >
+              Cambiar Horario
+            </Button>
+          </div>
+        </Card>
+
+        <LocationValidator 
+          onValidation={handleLocationValidation}
+          targetLocation={{ lat: -12.020728, lng: -77.048380 }}
+          allowedRadius={500}
+        />
       </div>
     );
   }
 
-  return (
-    <div className="min-h-screen bg-black p-4">
-      <div className="max-w-6xl mx-auto space-y-8">
-        {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="float-animation">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-600 mb-4 pulse-gold">
-              <Bus className="h-10 w-10 text-black" />
-            </div>
-          </div>
-          <h1 className="text-4xl font-bold text-white">
-            Reserva tu <span className="gradient-text">Pase de Movilidad</span>
-          </h1>
-          <p className="text-xl text-gray-300">
-            Ruta Este - Universidad Nacional de Ingeniería
+  if (currentStep === 'selfie') {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <div className="text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Toma una Selfie</h2>
+          <p className="text-gray-400 text-sm sm:text-base px-4">
+            Captura tu rostro para confirmar tu identidad
           </p>
-          
-          {/* Admin Controls */}
-          {isAdmin && (
-            <div className="flex justify-center space-x-4">
-              <Button
-                onClick={() => setShowConfigModal(true)}
-                className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 hover:bg-yellow-500/30 transition-all duration-200"
-              >
-                <Settings className="h-4 w-4 mr-2" />
-                <Crown className="h-4 w-4 mr-2" />
-                Configurar Horarios
-              </Button>
-              
-              <Button
-                onClick={() => setShowRedistribution(!showRedistribution)}
-                className="bg-blue-500/20 text-blue-400 border border-blue-500/50 hover:bg-blue-500/30 transition-all duration-200"
-              >
-                <ArrowRight className="h-4 w-4 mr-2" />
-                <Crown className="h-4 w-4 mr-2" />
-                {showRedistribution ? 'Ocultar' : 'Mostrar'} Redistribución
-              </Button>
+        </div>
+        
+        <Card className="glass-card p-4 sm:p-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0">
+            <div className="text-center sm:text-left">
+              <h3 className="font-semibold text-white text-base sm:text-lg">{selectedSlot?.label}</h3>
+              <p className="text-gray-400 text-sm">
+                Tipo: <span className="text-yellow-400">{selectedPassType === 'asiento' ? 'Asiento' : 'De pie'}</span>
+              </p>
             </div>
-          )}
-          
-          {/* Mostrar hora actual */}
-          <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/20 rounded-full px-4 py-2">
-            <Clock className="h-4 w-4 text-yellow-500" />
-            <span className="text-white font-medium">
-              Hora actual (Perú): {currentPeruTime || 'Cargando...'}
-            </span>
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-4 w-4 text-green-500" />
+              <span className="text-green-400 text-sm">Ubicación Validada</span>
+            </div>
           </div>
+        </Card>
+
+        <SelfieCapture onCapture={handleSelfieCapture} />
+      </div>
+    );
+  }
+
+  if (currentStep === 'confirmation') {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <div className="text-center">
+          <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Confirmar Reserva</h2>
+          <p className="text-gray-400 text-sm sm:text-base px-4">
+            Revisa los detalles de tu reserva antes de confirmar
+          </p>
         </div>
 
-        {/* Step Content */}
-        {currentStep === 'timeline' && (
-          <>
-            {isLoadingConfig ? (
-              <Card className="glass-card p-8 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto mb-4"></div>
-                <p className="text-gray-400">Cargando configuración de horarios...</p>
-              </Card>
-            ) : (
-              <>
-                <TimelineSchedule
-                  timeSlots={timeSlots}
-                  reservationCounts={reservationCounts}
-                  onSlotSelection={handleSlotSelection}
-                  getSlotAvailability={getSlotAvailability}
-                />
-                
-                {/* Seat Redistribution Component - Only for Admins */}
-                {isAdmin && showRedistribution && (
-                  <div className="mt-8">
-                    <SeatRedistribution
-                      timeSlots={timeSlots}
-                      reservationCounts={reservationCounts}
-                      onRedistributionComplete={handleRedistributionComplete}
-                    />
-                  </div>
-                )}
-              </>
-            )}
-          </>
-        )}
-
-        {currentStep === 'location' && selectedSlot && (
-          <div className="space-y-6">
-            <Card className="glass-card p-6 text-center">
-              <MapPin className="mx-auto w-16 h-16 text-yellow-500 mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-2">Validación de Ubicación</h2>
-              <p className="text-gray-400 mb-4">
-                Confirma que te encuentras dentro de 500m de la zona de embarque UNI
-              </p>
-              <Badge className="bg-blue-500/20 text-blue-400 mb-4">
-                {selectedSlot.label} - {selectedPassType === 'asiento' ? 'Con Asiento' : 'De Pie'}
+        <Card className="glass-card p-4 sm:p-6">
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-lg sm:text-xl font-bold text-white mb-2">{selectedSlot?.label}</h3>
+              <Badge className="bg-yellow-500/20 text-yellow-400 border-yellow-500/50 text-xs sm:text-sm">
+                {selectedPassType === 'asiento' ? 'Asiento Reservado' : 'Pase de Pie'}
               </Badge>
-              
-              {/* Información de la zona de validación */}
-              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
-                <div className="flex items-center justify-center space-x-2 text-sm text-yellow-400">
-                  <MapPin className="h-4 w-4" />
-                  <span>Zona de embarque: Universidad Nacional de Ingeniería - Coliseo UNI</span>
-                </div>
-                {/* <p className="text-xs text-gray-400 mt-1">
-                  Coordenadas: -11.945814, -76.991005 | Radio: 500 metros
-                </p> */}
-              </div>
-            </Card>
-
-            <LocationValidator
-              onValidation={handleLocationValidation}
-              targetLocation={{ lat: -12.012883, lng: -76.996109 }} // Nueva zona de embarque UNI
-              allowedRadius={500} // 500 metros de radio
-            />
-
-            <div className="flex space-x-4">
-              <Button
-                onClick={resetReservation}
-                variant="outline"
-                className="flex-1 border-white/20 text-white hover:bg-white/10"
-              >
-                Cancelar
-              </Button>
             </div>
-          </div>
-        )}
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-center">
+              <div className="flex items-center justify-center space-x-2">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+                <span className="text-green-400 text-sm sm:text-base">Ubicación Validada</span>
+              </div>
+              <div className="flex items-center justify-center space-x-2">
+                <CheckCircle className="h-4 w-4 sm:h-5 sm:w-5 text-green-500" />
+                <span className="text-green-400 text-sm sm:text-base">Identidad Verificada</span>
+              </div>
+            </div>
 
-        {currentStep === 'selfie' && (
-          <div className="space-y-6">
-            <Card className="glass-card p-6 text-center">
-              <Camera className="mx-auto w-16 h-16 text-yellow-500 mb-4" />
-              <h2 className="text-2xl font-bold text-white mb-2">Verificación de Presencia</h2>
-              <p className="text-gray-400">
-                Toma una selfie para confirmar tu presencia en la zona de embarque
+            <div className="border-t border-white/10 pt-4 text-center">
+              <p className="text-gray-400 text-xs sm:text-sm mb-4">
+                Al confirmar, aceptas cumplir con las normas de transporte universitario
               </p>
-            </Card>
-
-            <SelfieCapture onCapture={handleSelfieCapture} />
-
-            <div className="flex space-x-4">
-              <Button
-                onClick={() => setCurrentStep('location')}
-                variant="outline"
-                className="flex-1 border-white/20 text-white hover:bg-white/10"
-              >
-                Anterior
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {currentStep === 'confirmation' && selectedSlot && (
-          <div className="space-y-6">
-            <Card className="glass-card p-8 text-center">
-              <CheckCircle className="mx-auto w-16 h-16 text-green-500 mb-6" />
-              <h2 className="text-3xl font-bold text-white mb-4">Confirmar Reserva</h2>
               
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">Detalles de la Reserva</h3>
-                  <div className="space-y-3 text-left">
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Horario:</span>
-                      <span className="text-white">{selectedSlot.label}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Tipo de Pase:</span>
-                      <Badge className={`${selectedPassType === 'asiento' ? 'bg-blue-500/20 text-blue-400' : 'bg-orange-500/20 text-orange-400'}`}>
-                        {selectedPassType === 'asiento' ? 'Con Asiento' : 'De Pie'}
-                      </Badge>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Ubicación:</span>
-                      <span className="text-green-400">✓ Validada</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-400">Selfie:</span>
-                      <span className="text-green-400">✓ Capturada</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-lg font-semibold text-white mb-4">Selfie de Validación</h3>
-                  {selfieData && (
-                    <div className="w-full h-48 rounded-lg overflow-hidden border border-green-500/50">
-                      <img
-                        src={selfieData}
-                        alt="Selfie de validación"
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex space-x-4">
+              <div className="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-4">
                 <Button
-                  onClick={() => setCurrentStep('selfie')}
+                  onClick={resetReservation}
                   variant="outline"
-                  className="flex-1 border-white/20 text-white hover:bg-white/10"
+                  className="flex-1 border-gray-500 text-gray-300 hover:bg-gray-800"
+                  disabled={isLoading}
                 >
-                  Anterior
+                  Cancelar
                 </Button>
                 <Button
                   onClick={confirmReservation}
@@ -697,7 +517,7 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
                   className="flex-1 golden-button"
                 >
                   {isLoading ? (
-                    <div className="flex items-center space-x-2">
+                    <div className="flex items-center justify-center space-x-2">
                       <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
                       <span>Confirmando...</span>
                     </div>
@@ -706,17 +526,112 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
                   )}
                 </Button>
               </div>
-            </Card>
+            </div>
           </div>
-        )}
+        </Card>
+      </div>
+    );
+  }
 
-        {/* Admin Configuration Modal */}
+  return (
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+      {/* Header with current time */}
+      <div className="text-center space-y-2 sm:space-y-3">
+        <div className="flex items-center justify-center space-x-2">
+          <Bus className="h-6 w-6 sm:h-8 sm:w-8 text-yellow-500" />
+          <h1 className="text-2xl sm:text-3xl font-bold text-white">Sistema de Reservas</h1>
+        </div>
+        <div className="flex items-center justify-center space-x-2 text-gray-400">
+          <Clock className="h-4 w-4 sm:h-5 sm:w-5" />
+          <span className="text-sm sm:text-base">Hora actual (Perú): {currentPeruTime}</span>
+        </div>
+      </div>
+
+      {/* Admin Controls */}
+      {isAdmin && (
+        <Card className="glass-card p-3 sm:p-4 lg:p-6">
+          <div className="flex flex-col sm:flex-row items-center justify-between space-y-3 sm:space-y-0">
+            <div className="flex items-center space-x-2 sm:space-x-3">
+              <Crown className="h-5 w-5 sm:h-6 sm:w-6 text-yellow-500" />
+              <h2 className="text-lg sm:text-xl font-bold text-white">Panel de Administración</h2>
+            </div>
+            <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-3 w-full sm:w-auto">
+              <Button
+                onClick={() => setShowConfigModal(true)}
+                variant="outline"
+                size="sm"
+                className="border-yellow-500/50 text-yellow-400 hover:bg-yellow-500/10 text-xs sm:text-sm"
+              >
+                <Settings className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Configurar Horarios
+              </Button>
+              <Button
+                onClick={() => setShowRedistribution(true)}
+                variant="outline"
+                size="sm"
+                className="border-blue-500/50 text-blue-400 hover:bg-blue-500/10 text-xs sm:text-sm"
+              >
+                <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Redistribución
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* My Reservations */}
+      {userReservations.length > 0 && (
+        <Card className="glass-card p-4 sm:p-6">
+          <div className="flex items-center space-x-2 sm:space-x-3 mb-3 sm:mb-4">
+            <UserCheck className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
+            <h2 className="text-lg sm:text-xl font-bold text-white">Mis Reservas</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+            {userReservations.slice(0, 3).map((reservation) => (
+              <div key={reservation.id} className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 sm:p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge className="bg-green-500/20 text-green-400 border-green-500/50 text-xs">
+                    {reservation.estado}
+                  </Badge>
+                  <span className="text-xs sm:text-sm text-gray-400">
+                    {new Date(reservation.fecha_reserva).toLocaleDateString('es-ES')}
+                  </span>
+                </div>
+                <p className="text-white font-medium text-sm sm:text-base">{reservation.franja_horaria}</p>
+                <p className="text-gray-400 text-xs sm:text-sm">
+                  Tipo: {reservation.tipo_pase === 'asiento' ? 'Asiento' : 'De pie'}
+                </p>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Timeline Schedule */}
+      <TimelineSchedule 
+        timeSlots={timeSlots}
+        reservationCounts={reservationCounts}
+        onSlotSelect={handleSlotSelection}
+        isLoading={isLoadingConfig}
+      />
+
+      {/* Modals */}
+      {showConfigModal && (
         <ScheduleConfigModal
           isOpen={showConfigModal}
           onClose={() => setShowConfigModal(false)}
           onConfigUpdated={handleConfigUpdated}
         />
-      </div>
+      )}
+
+      {showRedistribution && (
+        <SeatRedistribution
+          isOpen={showRedistribution}
+          onClose={() => setShowRedistribution(false)}
+          onComplete={handleRedistributionComplete}
+        />
+      )}
     </div>
   );
 }

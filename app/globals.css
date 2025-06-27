@@ -46,6 +46,21 @@
     @apply bg-black text-white font-sans;
     background: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
     min-height: 100vh;
+    /* Prevent zoom on focus in iOS */
+    -webkit-text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  
+  /* Ensure proper touch scrolling on mobile */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Prevent horizontal scroll on mobile */
+  body, html {
+    overflow-x: hidden;
   }
 }
 
@@ -56,14 +71,48 @@
   
   .glass-card {
     @apply bg-white/5 backdrop-blur-sm border border-white/10 rounded-xl;
+    /* Improve touch interaction on mobile */
+    -webkit-tap-highlight-color: transparent;
   }
   
   .golden-button {
     @apply bg-gradient-to-r from-yellow-500 to-yellow-600 hover:from-yellow-400 hover:to-yellow-500 text-black font-semibold transition-all duration-200 transform hover:scale-105;
+    /* Better touch interaction */
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
   }
   
   .camera-frame {
     @apply border-4 border-yellow-500 rounded-2xl shadow-2xl shadow-yellow-500/20;
+  }
+  
+  /* Mobile-specific utilities */
+  .mobile-touch {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    user-select: none;
+  }
+  
+  .mobile-scroll {
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+  
+  /* Safe area utilities for mobile */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+  
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+  
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
   }
 }
 
@@ -85,6 +134,14 @@
   background: #f59e0b;
 }
 
+/* Hide scrollbar on mobile but keep functionality */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+  }
+}
+
 /* Animations */
 @keyframes float {
   0%, 100% { transform: translateY(0px); }
@@ -96,10 +153,84 @@
   50% { box-shadow: 0 0 40px rgba(251, 191, 36, 0.6); }
 }
 
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideInLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .float-animation {
   animation: float 6s ease-in-out infinite;
 }
 
 .pulse-gold {
   animation: pulse-gold 2s ease-in-out infinite;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.5s ease-out;
+}
+
+.slide-in-left {
+  animation: slideInLeft 0.3s ease-out;
+}
+
+/* Mobile-specific improvements */
+@media (max-width: 640px) {
+  /* Reduce motion for better mobile performance */
+  .float-animation {
+    animation: none;
+    transform: none;
+  }
+  
+  /* Optimize text rendering on mobile */
+  body {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+  
+  /* Better button sizing for touch */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  
+  /* Improved focus states for mobile */
+  input:focus,
+  textarea:focus,
+  select:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: rgb(251 191 36);
+  }
+}
+
+/* Tablet specific styles */
+@media (min-width: 641px) and (max-width: 1024px) {
+  .tablet-optimized {
+    font-size: 16px;
+  }
+}
+
+/* High DPI screens */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .glass-card {
+    backdrop-filter: blur(12px);
+  }
 }

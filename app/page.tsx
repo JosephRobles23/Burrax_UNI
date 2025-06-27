@@ -38,10 +38,12 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-screen bg-black">
+    <div className="min-h-screen bg-black overflow-x-hidden">
       <Navbar user={user} />
-      <main className="pt-16">
-        {!user ? <AuthComponent /> : <Dashboard user={user} />}
+      <main className="pt-14 sm:pt-16 pb-safe mobile-scroll">
+        <div className="safe-left safe-right">
+          {!user ? <AuthComponent /> : <Dashboard user={user} />}
+        </div>
       </main>
     </div>
   );

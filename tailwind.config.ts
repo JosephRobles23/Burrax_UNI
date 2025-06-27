@@ -8,6 +8,23 @@ const config: Config = {
     './app/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
+    screens: {
+      'xs': '475px',
+      'sm': '640px',
+      'md': '768px',
+      'lg': '1024px',
+      'xl': '1280px',
+      '2xl': '1536px',
+      // Mobile-first breakpoints
+      'mobile': '320px',
+      'mobile-lg': '425px',
+      'tablet': '768px',
+      'desktop': '1024px',
+      // Device specific
+      'iphone-se': '375px',
+      'iphone': '390px',
+      'ipad': '820px',
+    },
     extend: {
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
@@ -61,6 +78,34 @@ const config: Config = {
           '5': 'hsl(var(--chart-5))',
         },
       },
+      spacing: {
+        '18': '4.5rem',
+        '88': '22rem',
+        '128': '32rem',
+        // Mobile-friendly spacing
+        'mobile-safe': 'env(safe-area-inset-bottom)',
+        'mobile-header': '3.5rem',
+      },
+      fontSize: {
+        // Mobile-optimized typography
+        'mobile-xs': ['0.75rem', '1rem'],
+        'mobile-sm': ['0.875rem', '1.25rem'],
+        'mobile-base': ['1rem', '1.5rem'],
+        'mobile-lg': ['1.125rem', '1.75rem'],
+        'mobile-xl': ['1.25rem', '1.75rem'],
+      },
+      minHeight: {
+        'mobile-touch': '44px',
+        'mobile-button': '48px',
+      },
+      minWidth: {
+        'mobile-touch': '44px',
+        'mobile-button': '48px',
+      },
+      maxWidth: {
+        'mobile': '100vw',
+        'mobile-content': 'calc(100vw - 2rem)',
+      },
       keyframes: {
         'accordion-down': {
           from: {
@@ -78,10 +123,47 @@ const config: Config = {
             height: '0',
           },
         },
+        // Mobile-friendly animations
+        'fade-in-up': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateY(10px)',
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateY(0)',
+          },
+        },
+        'slide-in-left': {
+          '0%': {
+            opacity: '0',
+            transform: 'translateX(-10px)',
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'translateX(0)',
+          },
+        },
+        'scale-in': {
+          '0%': {
+            opacity: '0',
+            transform: 'scale(0.95)',
+          },
+          '100%': {
+            opacity: '1',
+            transform: 'scale(1)',
+          },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        'fade-in-up': 'fade-in-up 0.3s ease-out',
+        'slide-in-left': 'slide-in-left 0.3s ease-out',
+        'scale-in': 'scale-in 0.2s ease-out',
+      },
+      backdropBlur: {
+        xs: '2px',
       },
     },
   },
