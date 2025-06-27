@@ -39,21 +39,33 @@ export default function LocationValidator({
 
   // Función de testing para debug
   const testCoordinates = () => {
-    const testLat = -11.947391;
-    const testLng = -76.988528;
+    const testLat = -12.012883;
+    const testLng = -76.996109;
     
-    console.log('🧪 TESTING COORDINATES:');
-    console.log('Test coordinates:', { lat: testLat, lng: testLng });
-    console.log('Target coordinates:', targetLocation);
+    // console.log('🧪 TESTING COORDINATES:');
+    // console.log('Test coordinates:', { lat: testLat, lng: testLng });
+    // console.log('Target coordinates:', targetLocation);
     
     const testDistance = calculateDistance(testLat, testLng, targetLocation.lat, targetLocation.lng);
-    console.log('Distance between test coords and target:', testDistance, 'meters');
-    console.log('Should be valid?', testDistance <= allowedRadius);
+    // console.log('Distance between test coords and target:', testDistance, 'meters');
+    // console.log('Should be valid?', testDistance <= allowedRadius);
   };
 
   // Test automático al cargar el componente
   useEffect(() => {
-    testCoordinates();
+    if (!targetLocation) return;
+
+    // 🔧 DEV: Testing with slightly different coordinates to simulate GPS variance
+    const testLat = -12.012883; // Coordenadas de la nueva zona de embarque
+    const testLng = -76.996109;
+    
+    // console.log('🧪 TESTING COORDINATES:');
+    // console.log('Test coordinates:', { lat: testLat, lng: testLng });
+    // console.log('Target coordinates:', targetLocation);
+    
+    const testDistance = calculateDistance(testLat, testLng, targetLocation.lat, targetLocation.lng);
+    // console.log('Distance between test coords and target:', testDistance, 'meters');
+    // console.log('Should be valid?', testDistance <= allowedRadius);
   }, [targetLocation, allowedRadius]);
 
   const validateLocation = async () => {
@@ -66,20 +78,20 @@ export default function LocationValidator({
         throw new Error('Geolocalización no soportada por este navegador');
       }
 
-      console.log('🎯 TARGET LOCATION:', targetLocation);
-      console.log('📏 ALLOWED RADIUS:', allowedRadius);
+      // console.log('🎯 TARGET LOCATION:', targetLocation);
+      // console.log('📏 ALLOWED RADIUS:', allowedRadius);
 
       // Verificar permisos antes de hacer la solicitud
       if ('permissions' in navigator) {
         try {
           const permission = await navigator.permissions.query({ name: 'geolocation' });
-          console.log('📍 GPS Permission status:', permission.state);
+           console.log('📍 GPS Permission status:', permission.state);
           
           if (permission.state === 'denied') {
             throw new Error('Permisos de ubicación denegados. Por favor permite el acceso en la configuración del navegador.');
           }
         } catch (permError) {
-          console.log('⚠️ Could not check permissions:', permError);
+          // console.log('⚠️ Could not check permissions:', permError);
         }
       }
 
@@ -124,22 +136,22 @@ export default function LocationValidator({
         targetLocation.lng
       );
 
-      console.log('📏 CALCULATED DISTANCE:', distanceToTarget, 'metros');
-      console.log('✅ ALLOWED RADIUS:', allowedRadius, 'metros');
-      console.log('🔍 IS WITHIN RADIUS?:', distanceToTarget <= allowedRadius);
+      // console.log('📏 CALCULATED DISTANCE:', distanceToTarget, 'metros');
+      // console.log('✅ ALLOWED RADIUS:', allowedRadius, 'metros');
+      // console.log('🔍 IS WITHIN RADIUS?:', distanceToTarget <= allowedRadius);
 
       setDistance(distanceToTarget);
 
       const isWithinRadius = distanceToTarget <= allowedRadius;
       
       if (isWithinRadius) {
-        console.log('✅ VALIDATION SUCCESS - Location is valid');
+        // console.log('✅ VALIDATION SUCCESS - Location is valid');
         setLocationStatus('valid');
         toast.success('Ubicación validada correctamente');
         onValidation(true, userLocation);
       } else {
-        console.log('❌ VALIDATION FAILED - Location is outside radius');
-        console.log(`Distance: ${distanceToTarget}m, Max allowed: ${allowedRadius}m`);
+        // console.log('❌ VALIDATION FAILED - Location is outside radius');
+        // console.log(`Distance: ${distanceToTarget}m, Max allowed: ${allowedRadius}m`);
         setLocationStatus('invalid');
         toast.error(`Estás a ${Math.round(distanceToTarget)}m de la zona de embarque. Debes estar dentro de ${allowedRadius}m.`);
         onValidation(false);
@@ -174,11 +186,11 @@ export default function LocationValidator({
 
   // Función de testing manual con coordenadas exactas
   const testExactCoordinates = () => {
-    console.log('🔬 TESTING WITH EXACT COORDINATES');
+    // console.log('🔬 TESTING WITH EXACT COORDINATES');
     
     const testLocation = {
-      lat: -11.947391,
-      lng: -76.988528,
+      lat: -12.012883,
+      lng: -76.996109,
     };
 
     setCurrentLocation(testLocation);
@@ -190,23 +202,23 @@ export default function LocationValidator({
       targetLocation.lng
     );
 
-    console.log('📍 TEST LOCATION:', testLocation);
-    console.log('🎯 TARGET LOCATION:', targetLocation);
-    console.log('📏 DISTANCE:', distanceToTarget, 'metros');
-    console.log('✅ ALLOWED RADIUS:', allowedRadius, 'metros');
-    console.log('🔍 IS WITHIN RADIUS?:', distanceToTarget <= allowedRadius);
+     console.log('📍 TEST LOCATION:', testLocation);
+     console.log('🎯 TARGET LOCATION:', targetLocation);
+     console.log('📏 DISTANCE:', distanceToTarget, 'metros');
+     console.log('✅ ALLOWED RADIUS:', allowedRadius, 'metros');
+     console.log('🔍 IS WITHIN RADIUS?:', distanceToTarget <= allowedRadius);
 
     setDistance(distanceToTarget);
 
     const isWithinRadius = distanceToTarget <= allowedRadius;
     
     if (isWithinRadius) {
-      console.log('✅ TEST SUCCESS - Location would be valid');
+      // console.log('✅ TEST SUCCESS - Location would be valid');
       setLocationStatus('valid');
       toast.success('✅ Test: Ubicación sería válida');
       onValidation(true, testLocation);
     } else {
-      console.log('❌ TEST FAILED - Location would be outside radius');
+      // console.log('❌ TEST FAILED - Location would be outside radius');
       setLocationStatus('invalid');
       toast.error(`❌ Test: Distancia ${Math.round(distanceToTarget)}m > ${allowedRadius}m`);
       onValidation(false);
@@ -218,7 +230,7 @@ export default function LocationValidator({
     try {
       if ('permissions' in navigator) {
         const permission = await navigator.permissions.query({ name: 'geolocation' });
-        console.log('📍 Current permission state:', permission.state);
+        // console.log('📍 Current permission state:', permission.state);
         
         if (permission.state === 'granted') {
           toast.success('✅ Permisos de ubicación: Concedidos');
@@ -350,22 +362,22 @@ export default function LocationValidator({
           </Button>
 
           {/* Botón de testing para debug */}
-          <Button
+          {/* <Button
             onClick={testExactCoordinates}
             variant="outline"
             className="w-full bg-yellow-600/20 border-yellow-500 text-yellow-400 hover:bg-yellow-600/30"
           >
             🧪 Test con Coordenadas Exactas
-          </Button>
+          </Button> */}
 
           {/* Botón para verificar permisos */}
-          <Button
+          {/* <Button
             onClick={checkLocationPermissions}
             variant="outline"
             className="w-full bg-blue-600/20 border-blue-500 text-blue-400 hover:bg-blue-600/30"
           >
             🔒 Verificar Permisos GPS
-          </Button>
+          </Button> */}
 
           <div className="text-xs text-gray-500 space-y-1">
             <p>• Asegúrate de tener el GPS activado</p>

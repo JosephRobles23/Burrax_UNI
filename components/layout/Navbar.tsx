@@ -2,8 +2,10 @@
 
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { useUserRole } from '@/hooks/use-user-role';
 import { Button } from '@/components/ui/button';
-import { LogOut, University } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { LogOut, University, Crown, GraduationCap } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface NavbarProps {
@@ -11,6 +13,8 @@ interface NavbarProps {
 }
 
 export default function Navbar({ user }: NavbarProps) {
+  const { isAdmin, loading } = useUserRole(user);
+
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -38,7 +42,29 @@ export default function Navbar({ user }: NavbarProps) {
             <div className="flex items-center space-x-4">
               <div className="text-right">
                 <p className="text-sm font-medium text-white">{user.email}</p>
-                <p className="text-xs text-gray-400">Estudiante</p>
+                <div className="flex items-center justify-end space-x-2">
+                  {loading ? (
+                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
+                  ) : (
+                    <>
+                      {isAdmin ? (
+                        <Crown className="h-3 w-3 text-yellow-500" />
+                      ) : (
+                        <GraduationCap className="h-3 w-3 text-blue-400" />
+                      )}
+                      <Badge 
+                        variant={isAdmin ? "default" : "secondary"}
+                        className={`text-xs ${
+                          isAdmin 
+                            ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' 
+                            : 'bg-blue-500/20 text-blue-400 border-blue-500/50'
+                        }`}
+                      >
+                        {isAdmin ? 'Administrador' : 'Estudiante'}
+                      </Badge>
+                    </>
+                  )}
+                </div>
               </div>
               <Button
                 onClick={handleSignOut}

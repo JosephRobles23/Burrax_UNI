@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
+import { useUserRole } from '@/hooks/use-user-role';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,12 +17,15 @@ import {
   Navigation,
   Bus,
   UserCheck,
-  Calendar
+  Calendar,
+  Settings,
+  Crown
 } from 'lucide-react';
 import { toast } from 'sonner';
 import LocationValidator from './LocationValidator';
 import SelfieCapture from './SelfieCapture';
 import TimelineSchedule from './TimelineSchedule';
+import ScheduleConfigModal from '@/components/admin/ScheduleConfigModal';
 
 interface ReservationSystemProps {
   user: User;
@@ -89,6 +93,7 @@ const TIME_SLOTS: TimeSlot[] = [
 ];
 
 export default function ReservationSystem({ user }: ReservationSystemProps) {
+  const { isAdmin } = useUserRole(user);
   const [currentStep, setCurrentStep] = useState<'timeline' | 'location' | 'selfie' | 'confirmation'>('timeline');
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [selectedPassType, setSelectedPassType] = useState<'asiento' | 'parado'>('asiento');
@@ -98,6 +103,11 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
   const [userReservations, setUserReservations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [currentPeruTime, setCurrentPeruTime] = useState<string>('');
+  
+  // Admin state
+  const [showConfigModal, setShowConfigModal] = useState(false);
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([]);
+  const [isLoadingConfig, setIsLoadingConfig] = useState(true);
 
   const updateCurrentTime = () => {
     const now = new Date();
@@ -111,10 +121,81 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
     setCurrentPeruTime(timeString);
   };
 
+  const fetchScheduleConfig = async () => {
+    try {
+      setIsLoadingConfig(true);
+      const { data, error } = await supabase.rpc('get_schedule_config');
+      
+      if (error) throw error;
+      
+      // Transform database data to TimeSlot format
+      const slots: TimeSlot[] = (data || []).map((config: any) => ({
+        id: config.slot_id,
+        label: config.label,
+        startTime: config.start_time,
+        endTime: config.end_time,
+        maxSeats: config.max_seats,
+        maxStanding: config.max_standing,
+        isActive: false,
+        allowStandingOnly: config.allow_standing_only,
+      }));
+      
+      setTimeSlots(slots);
+    } catch (error) {
+      console.error('Error fetching schedule config:', error);
+      toast.error('Error al cargar la configuración de horarios');
+      // Fallback to default slots
+      setTimeSlots([
+        {
+          id: 'slot-0420',
+          label: '4:20 - 4:35 AM',
+          startTime: '04:20',
+          endTime: '04:35',
+          maxSeats: 15,
+          maxStanding: 0,
+          isActive: false,
+          allowStandingOnly: false,
+        },
+        {
+          id: 'slot-0435',
+          label: '4:35 - 4:50 AM',
+          startTime: '04:35',
+          endTime: '04:50',
+          maxSeats: 15,
+          maxStanding: 0,
+          isActive: false,
+          allowStandingOnly: false,
+        },
+        {
+          id: 'slot-0450',
+          label: '4:50 - 5:05 AM',
+          startTime: '04:50',
+          endTime: '05:05',
+          maxSeats: 15,
+          maxStanding: 0,
+          isActive: false,
+          allowStandingOnly: false,
+        },
+        {
+          id: 'slot-0505',
+          label: '5:05 - 5:30 AM',
+          startTime: '05:05',
+          endTime: '05:30',
+          maxSeats: 0,
+          maxStanding: 45,
+          isActive: false,
+          allowStandingOnly: true,
+        },
+      ]);
+    } finally {
+      setIsLoadingConfig(false);
+    }
+  };
+
   useEffect(() => {
+    fetchScheduleConfig();
     fetchReservationCounts();
     fetchUserReservations();
-    updateActiveTimeSlots();
     updateCurrentTime();
     
     // Update every minute
@@ -127,16 +208,21 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    if (timeSlots.length > 0) {
+      updateActiveTimeSlots();
+    }
+  }, [timeSlots]);
+
   const updateActiveTimeSlots = () => {
+    if (timeSlots.length === 0) return;
+    
     // Obtener hora actual en zona horaria de Perú (GMT-5)
     const now = new Date();
     const peruTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Lima"}));
     const currentTime = peruTime.getHours() * 100 + peruTime.getMinutes();
     
-    console.log('Hora actual en Perú:', peruTime.toLocaleTimeString('es-PE', { timeZone: 'America/Lima' }));
-    console.log('Hora en formato HHMM:', currentTime);
-    
-    TIME_SLOTS.forEach(slot => {
+    setTimeSlots(prevSlots => prevSlots.map(slot => {
       const [startHour, startMin] = slot.startTime.split(':').map(Number);
       const [endHour, endMin] = slot.endTime.split(':').map(Number);
       const startTime = startHour * 100 + startMin;
@@ -151,18 +237,10 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
       const isWithinPreStart = currentTime >= preStartTime && currentTime < startTime;
       const isWithinSlot = currentTime >= startTime && currentTime <= endTime;
       
-      slot.isActive = isWithinPreStart || isWithinSlot;
+      const isActive = isWithinPreStart || isWithinSlot;
       
-      console.log(`Slot ${slot.label}:`, {
-        startTime,
-        endTime,
-        preStartTime,
-        currentTime,
-        isWithinPreStart,
-        isWithinSlot,
-        isActive: slot.isActive
-      });
-    });
+      return { ...slot, isActive };
+    }));
   };
 
   const fetchReservationCounts = async () => {
@@ -199,13 +277,24 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
         availableSeats: slot.maxSeats,
         availableStanding: slot.maxStanding,
         totalAvailable: slot.maxSeats + slot.maxStanding,
+        isFullyBooked: false,
+        canBookSeat: slot.maxSeats > 0,
+        canBookStanding: slot.maxStanding > 0,
       };
     }
 
+    const availableSeats = Math.max(0, slot.maxSeats - counts.asientos_ocupados);
+    const availableStanding = Math.max(0, slot.maxStanding - counts.parados_ocupados);
+    const totalAvailable = availableSeats + availableStanding;
+    const isFullyBooked = totalAvailable === 0;
+
     return {
-      availableSeats: Math.max(0, slot.maxSeats - counts.asientos_ocupados),
-      availableStanding: Math.max(0, slot.maxStanding - counts.parados_ocupados),
-      totalAvailable: Math.max(0, (slot.maxSeats + slot.maxStanding) - counts.total_reservas),
+      availableSeats,
+      availableStanding,
+      totalAvailable,
+      isFullyBooked,
+      canBookSeat: availableSeats > 0 && slot.maxSeats > 0,
+      canBookStanding: availableStanding > 0 && slot.maxStanding > 0,
     };
   };
 
@@ -284,8 +373,8 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
           franja_horaria: selectedSlot.id,
           estado: 'validado',
           url_selfie_validacion: selfieUrl,
-          ubicacion_lat: -11.947391, //  -11.947391, lng: -76.988528 Mock coordinates for UNI
-          ubicacion_lng: -76.988528,
+          ubicacion_lat: -12.012883, //  Nueva zona de embarque UNI -- casa : -11.947391, lng: -76.988528
+          ubicacion_lng: -76.996109,
         });
 
       if (error) throw error;
@@ -318,6 +407,12 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
 
   // Check if user already has a reservation today
   const hasReservationToday = userReservations.length > 0;
+
+  const handleConfigUpdated = () => {
+    fetchScheduleConfig();
+    toast.success('Horarios actualizados. Refrescando disponibilidad...');
+    fetchReservationCounts();
+  };
 
   if (hasReservationToday) {
     const reservation = userReservations[0];
@@ -404,6 +499,20 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
             Ruta Este - Universidad Nacional de Ingeniería
           </p>
           
+          {/* Admin Controls */}
+          {isAdmin && (
+            <div className="flex justify-center">
+              <Button
+                onClick={() => setShowConfigModal(true)}
+                className="bg-yellow-500/20 text-yellow-400 border border-yellow-500/50 hover:bg-yellow-500/30 transition-all duration-200"
+              >
+                <Settings className="h-4 w-4 mr-2" />
+                <Crown className="h-4 w-4 mr-2" />
+                Configurar Horarios
+              </Button>
+            </div>
+          )}
+          
           {/* Mostrar hora actual */}
           <div className="inline-flex items-center space-x-2 bg-white/5 border border-white/20 rounded-full px-4 py-2">
             <Clock className="h-4 w-4 text-yellow-500" />
@@ -415,12 +524,21 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
 
         {/* Step Content */}
         {currentStep === 'timeline' && (
-          <TimelineSchedule
-            timeSlots={TIME_SLOTS}
-            reservationCounts={reservationCounts}
-            onSlotSelection={handleSlotSelection}
-            getSlotAvailability={getSlotAvailability}
-          />
+          <>
+            {isLoadingConfig ? (
+              <Card className="glass-card p-8 text-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-yellow-500 mx-auto mb-4"></div>
+                <p className="text-gray-400">Cargando configuración de horarios...</p>
+              </Card>
+            ) : (
+              <TimelineSchedule
+                timeSlots={timeSlots}
+                reservationCounts={reservationCounts}
+                onSlotSelection={handleSlotSelection}
+                getSlotAvailability={getSlotAvailability}
+              />
+            )}
+          </>
         )}
 
         {currentStep === 'location' && selectedSlot && (
@@ -439,17 +557,17 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
               <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
                 <div className="flex items-center justify-center space-x-2 text-sm text-yellow-400">
                   <MapPin className="h-4 w-4" />
-                  <span>Zona de embarque: Universidad Nacional de Ingeniería</span>
+                  <span>Zona de embarque: Universidad Nacional de Ingeniería - Coliseo UNI</span>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
+                {/* <p className="text-xs text-gray-400 mt-1">
                   Coordenadas: -11.945814, -76.991005 | Radio: 500 metros
-                </p>
+                </p> */}
               </div>
             </Card>
 
             <LocationValidator
               onValidation={handleLocationValidation}
-              targetLocation={{ lat: -11.947391, lng: -76.988528 }} // UNI coordinates
+              targetLocation={{ lat: -12.012883, lng: -76.996109 }} // Nueva zona de embarque UNI
               allowedRadius={500} // 500 metros de radio
             />
 
@@ -560,6 +678,13 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
             </Card>
           </div>
         )}
+
+        {/* Admin Configuration Modal */}
+        <ScheduleConfigModal
+          isOpen={showConfigModal}
+          onClose={() => setShowConfigModal(false)}
+          onConfigUpdated={handleConfigUpdated}
+        />
       </div>
     </div>
   );

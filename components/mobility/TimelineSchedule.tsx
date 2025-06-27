@@ -42,12 +42,17 @@ export default function TimelineSchedule({
 }: TimelineScheduleProps) {
   const getSlotStatus = (slot: TimeSlot) => {
     const availability = getSlotAvailability(slot);
+    // Usar zona horaria de Perú (GMT-5)
     const now = new Date();
-    const currentTime = now.getHours() * 100 + now.getMinutes();
+    const peruTime = new Date(now.toLocaleString("en-US", {timeZone: "America/Lima"}));
+    const currentTime = peruTime.getHours() * 100 + peruTime.getMinutes();
     const [startHour, startMin] = slot.startTime.split(':').map(Number);
+    const [endHour, endMin] = slot.endTime.split(':').map(Number);
     const startTime = startHour * 100 + startMin;
+    const endTime = endHour * 100 + endMin;
 
-    if (currentTime > startTime) {
+    // Un slot está completado solo si ya pasó la hora de fin
+    if (currentTime > endTime) {
       return { status: 'completed', color: 'bg-gray-500', label: 'Completado' };
     }
     
