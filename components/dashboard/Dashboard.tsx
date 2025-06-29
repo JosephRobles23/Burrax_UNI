@@ -20,12 +20,14 @@ import {
   Bus,
   Clock,
   Upload,
-  BarChart3
+  BarChart3,
+  TrendingUp
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ReservationSystem from '@/components/mobility/ReservationSystem';
 import { DocumentUploadModal } from '@/components/documents';
 import QueueSimulationDashboard from '@/app/dashboard/components/QueueSimulationDashboard';
+import RealTimeReservationDashboard from '@/app/dashboard/components/RealTimeReservationDashboard';
 
 interface UserData {
   id: string;
@@ -143,7 +145,7 @@ export default function Dashboard({ user }: DashboardProps) {
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6 sm:mb-8 bg-white/5 max-w-lg mx-auto">
+          <TabsList className="grid w-full grid-cols-3 mb-6 sm:mb-8 bg-white/5 max-w-2xl mx-auto">
             <TabsTrigger 
               value="profile" 
               className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-white py-2.5 text-sm sm:text-base"
@@ -161,13 +163,21 @@ export default function Dashboard({ user }: DashboardProps) {
               <span className="xs:hidden">Buses</span>
             </TabsTrigger>
             <TabsTrigger 
+              value="reservations" 
+              className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-white py-2.5 text-sm sm:text-base"
+            >
+              <TrendingUp className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Reservas</span>
+              <span className="xs:hidden">Datos</span>
+            </TabsTrigger>
+            {/* <TabsTrigger 
               value="dashboard" 
               className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-white py-2.5 text-sm sm:text-base"
             >
               <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
               <span className="hidden xs:inline">Dashboard</span>
-              <span className="xs:hidden">Datos</span>
-            </TabsTrigger>
+              <span className="xs:hidden">Sim</span>
+            </TabsTrigger> */}
           </TabsList>
 
           {/* Profile Tab */}
@@ -392,6 +402,29 @@ export default function Dashboard({ user }: DashboardProps) {
                 </h2>
                 <p className="text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base px-4">
                   Para acceder al sistema de reservas de movilidad, primero debes completar tu registro subiendo todos los documentos requeridos.
+                </p>
+                <Button
+                  onClick={() => setActiveTab('profile')}
+                  className="golden-button w-full sm:w-auto"
+                >
+                  Ir a Mi Perfil
+                </Button>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Reservations Tab */}
+          <TabsContent value="reservations" className="space-y-6 sm:space-y-8">
+            {isProfileComplete ? (
+              <RealTimeReservationDashboard embedded={true} />
+            ) : (
+              <Card className="glass-card p-6 sm:p-8 text-center">
+                <TrendingUp className="mx-auto w-12 h-12 sm:w-16 sm:h-16 text-yellow-500 mb-4 sm:mb-6" />
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">
+                  Completa tu Perfil
+                </h2>
+                <p className="text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base px-4">
+                  Para acceder al dashboard de reservas en tiempo real, primero debes completar tu registro subiendo todos los documentos requeridos.
                 </p>
                 <Button
                   onClick={() => setActiveTab('profile')}

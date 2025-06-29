@@ -49,55 +49,59 @@ export default function TimelineSchedule({
   };
 
   return (
-    <div className="space-y-8">
-      {/* Timeline Header */}
-      <Card className="glass-card p-6">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-bold text-white">Horarios Disponibles</h2>
-          <p className="text-gray-400">
-            Selecciona un horario y tipo de pase para continuar con tu reserva
+    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+      {/* Timeline Header - Optimizado para móvil */}
+      <Card className="glass-card p-3 sm:p-4 lg:p-6">
+        <div className="text-center space-y-2 sm:space-y-3 lg:space-y-4">
+          <h2 className="text-lg sm:text-xl lg:text-2xl font-bold text-white">Horarios Disponibles</h2>
+          <p className="text-xs sm:text-sm text-gray-400 px-2">
+            <span className="hidden sm:inline">Selecciona un horario y tipo de pase para continuar con tu reserva</span>
+            <span className="sm:hidden">Selecciona horario y tipo de pase</span>
           </p>
           
-          {/* Legend */}
-          <div className="flex flex-wrap justify-center gap-4 text-sm">
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+          {/* Legend - Compacta */}
+          <div className="flex flex-wrap justify-center gap-2 sm:gap-3 lg:gap-4 text-xs sm:text-sm">
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-green-500 rounded-full animate-pulse"></div>
               <span className="text-gray-300">Activo</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-blue-500 rounded-full"></div>
               <span className="text-gray-300">Próximo</span>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-red-500 rounded-full"></div>
-              <span className="text-gray-300">Sin Cupos</span>
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-red-500 rounded-full"></div>
+              <span className="text-gray-300">
+                <span className="hidden sm:inline">Sin Cupos</span>
+                <span className="sm:hidden">Lleno</span>
+              </span>
             </div>
-            <div className="flex items-center space-x-2">
-              <div className="w-3 h-3 bg-gray-500 rounded-full"></div>
+            <div className="flex items-center space-x-1 sm:space-x-2">
+              <div className="w-2 h-2 sm:w-3 sm:h-3 bg-gray-500 rounded-full"></div>
               <span className="text-gray-300">Completado</span>
             </div>
           </div>
         </div>
       </Card>
 
-      {/* Timeline */}
+      {/* Timeline - Optimizado */}
       <div className="relative">
-        {/* Vertical Line */}
-        <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-600"></div>
+        {/* Vertical Line - Más pequeña en móvil */}
+        <div className="absolute left-16 sm:left-8 lg:left-10 top-0 bottom-0 w-0.5 bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-600"></div>
 
-        <div className="space-y-8">
+        <div className="space-y-4 sm:space-y-6 lg:space-y-8">
           {timeSlots.map((slot, index) => {
             const slotStatus = getSlotStatus(slot);
             const availability = getSlotAvailability(slot);
             
             return (
-              <div key={slot.id} className="relative flex items-start space-x-8">
-                {/* Timeline Circle */}
-                <div className="relative z-10 flex-shrink-0">
-                  <div className={`w-16 h-16 rounded-full ${slotStatus.color} flex items-center justify-center border-4 border-black`}>
-                    <Clock className="h-6 w-6 text-white" />
+              <div key={slot.id} className="relative flex items-start justify-between space-x-6 sm:space-x-8 lg:space-x-12 ">
+                {/* Timeline Circle - Más pequeño en móvil */}
+                <div className="relative z-10 flex-shrink-0 ml-12 sm:ml-4 lg:ml-6">
+                  <div className={`w-8 h-8 sm:w-12 sm:h-12 lg:w-16 lg:h-16 rounded-full ${slotStatus.color} flex items-center justify-center border-2 sm:border-3 lg:border-4 border-black`}>
+                    <Clock className="h-3 w-3 sm:h-4 sm:w-4 lg:h-6 lg:w-6 text-white" />
                   </div>
-                  <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
+                  <div className="absolute -bottom-6 sm:-bottom-7 lg:-bottom-8 left-1/2 transform -translate-x-1/2">
                     <StatusBadge
                       status={
                         slotStatus.status === 'active' ? 'active' :
@@ -111,59 +115,62 @@ export default function TimelineSchedule({
                   </div>
                 </div>
 
-                {/* Slot Content */}
-                <Card className="glass-card p-6 flex-1">
-                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    {/* Time Info */}
-                    <div className="space-y-4">
+                {/* Slot Content - Compacto y con ancho limitado */}
+                <Card className="glass-card p-3 ml-3 sm:p-4 lg:p-6 flex-1 max-w-[230px] sm:max-w-none">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
+                    {/* Time Info - Compacto */}
+                    <div className="space-y-2 sm:space-y-3 lg:space-y-4">
                       <div>
-                        <h3 className="text-xl font-bold text-white">{slot.label}</h3>
-                        <p className="text-gray-400">Ruta Este</p>
+                        <h3 className="text-sm sm:text-lg lg:text-xl font-bold text-white truncate">{slot.label}</h3>
+                        <p className="text-xs sm:text-sm text-gray-400">Ruta Este</p>
                       </div>
                       
-                      <div className="space-y-2">
-                        <div className="flex items-center space-x-2 text-sm">
-                          <Users className="h-4 w-4 text-yellow-500" />
-                          <span className="text-gray-300">
-                            {availability.totalAvailable} cupos disponibles
+                      <div className="space-y-1 sm:space-y-2">
+                        <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+                          <Users className="h-3 w-3 sm:h-4 sm:w-4 text-yellow-500 flex-shrink-0" />
+                          <span className="text-gray-300 truncate">
+                            <span className="hidden sm:inline">{availability.totalAvailable} cupos disponibles</span>
+                            <span className="sm:hidden">{availability.totalAvailable} disponibles</span>
                           </span>
                         </div>
                         
                         {!slot.allowStandingOnly && (
-                          <div className="flex items-center space-x-2 text-sm">
-                            <UserCheck className="h-4 w-4 text-blue-400" />
-                            <span className="text-gray-300">
-                              {availability.availableSeats} asientos libres
+                          <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+                            <UserCheck className="h-3 w-3 sm:h-4 sm:w-4 text-blue-400 flex-shrink-0" />
+                            <span className="text-gray-300 truncate">
+                              <span className="hidden sm:inline">{availability.availableSeats} asientos libres</span>
+                              <span className="sm:hidden">{availability.availableSeats} asientos</span>
                             </span>
                           </div>
                         )}
                         
                         {(slot.maxStanding > 0 || slot.allowStandingOnly) && (
-                          <div className="flex items-center space-x-2 text-sm">
-                            <UserCheck className="h-4 w-4 text-orange-400" />
-                            <span className="text-gray-300">
-                              {availability.availableStanding} cupos de pie
+                          <div className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm">
+                            <UserCheck className="h-3 w-3 sm:h-4 sm:w-4 text-orange-400 flex-shrink-0" />
+                            <span className="text-gray-300 truncate">
+                              <span className="hidden sm:inline">{availability.availableStanding} cupos de pie</span>
+                              <span className="sm:hidden">{availability.availableStanding} de pie</span>
                             </span>
                           </div>
                         )}
                       </div>
                     </div>
 
-                    {/* Availability Stats */}
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-white">Disponibilidad</h4>
+                    {/* Availability Stats - Compacto */}
+                    <div className="space-y-2 sm:space-y-3 lg:space-y-4">
+                      <h4 className="font-semibold text-white text-xs sm:text-sm lg:text-base">Disponibilidad</h4>
                       
                       {!slot.allowStandingOnly && (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
+                        <div className="space-y-1 sm:space-y-2">
+                          <div className="flex justify-between text-xs sm:text-sm">
                             <span className="text-gray-400">Asientos</span>
                             <span className="text-white">
                               {slot.maxSeats - availability.availableSeats}/{slot.maxSeats}
                             </span>
                           </div>
-                          <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div className="w-full bg-gray-700 rounded-full h-1.5 sm:h-2">
                             <div 
-                              className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                              className="bg-blue-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                               style={{ 
                                 width: `${((slot.maxSeats - availability.availableSeats) / slot.maxSeats) * 100}%` 
                               }}
@@ -173,16 +180,16 @@ export default function TimelineSchedule({
                       )}
                       
                       {(slot.maxStanding > 0 || slot.allowStandingOnly) && (
-                        <div className="space-y-2">
-                          <div className="flex justify-between text-sm">
+                        <div className="space-y-1 sm:space-y-2">
+                          <div className="flex justify-between text-xs sm:text-sm">
                             <span className="text-gray-400">De Pie</span>
                             <span className="text-white">
                               {slot.maxStanding - availability.availableStanding}/{slot.maxStanding}
                             </span>
                           </div>
-                          <div className="w-full bg-gray-700 rounded-full h-2">
+                          <div className="w-full bg-gray-700 rounded-full h-1.5 sm:h-2">
                             <div 
-                              className="bg-orange-500 h-2 rounded-full transition-all duration-300"
+                              className="bg-orange-500 h-1.5 sm:h-2 rounded-full transition-all duration-300"
                               style={{ 
                                 width: `${((slot.maxStanding - availability.availableStanding) / slot.maxStanding) * 100}%` 
                               }}
@@ -192,44 +199,52 @@ export default function TimelineSchedule({
                       )}
                     </div>
 
-                    {/* Action Buttons */}
-                    <div className="space-y-4">
-                      <h4 className="font-semibold text-white">Reservar Pase</h4>
+                    {/* Action Buttons - Compacto */}
+                    <div className="space-y-2 sm:space-y-3 lg:space-y-4 sm:col-span-2 lg:col-span-1">
+                      <h4 className="font-semibold text-white text-xs sm:text-sm lg:text-base">Reservar Pase</h4>
                       
                       {slotStatus.status === 'completed' ? (
-                        <div className="text-center py-4">
-                          <AlertCircle className="h-8 w-8 text-gray-500 mx-auto mb-2" />
-                          <p className="text-gray-500 text-sm">Horario finalizado</p>
+                        <div className="text-center py-2 sm:py-3 lg:py-4">
+                          <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-gray-500 mx-auto mb-1 sm:mb-2" />
+                          <p className="text-gray-500 text-xs sm:text-sm">Horario finalizado</p>
                         </div>
                       ) : slotStatus.status === 'full' ? (
-                        <div className="text-center py-4">
-                          <AlertCircle className="h-8 w-8 text-red-500 mx-auto mb-2" />
-                          <p className="text-red-400 text-sm">Sin cupos disponibles</p>
+                        <div className="text-center py-2 sm:py-3 lg:py-4">
+                          <AlertCircle className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-red-500 mx-auto mb-1 sm:mb-2" />
+                          <p className="text-red-400 text-xs sm:text-sm">
+                            <span className="hidden sm:inline">Sin cupos disponibles</span>
+                            <span className="sm:hidden">Sin cupos</span>
+                          </p>
                         </div>
                       ) : !slot.isActive ? (
-                        <div className="text-center py-4">
-                          <Clock className="h-8 w-8 text-blue-500 mx-auto mb-2" />
-                          <p className="text-blue-400 text-sm">Reservas próximamente</p>
+                        <div className="text-center py-2 sm:py-3 lg:py-4">
+                          <Clock className="h-6 w-6 sm:h-7 sm:w-7 lg:h-8 lg:w-8 text-blue-500 mx-auto mb-1 sm:mb-2" />
+                          <p className="text-blue-400 text-xs sm:text-sm">
+                            <span className="hidden sm:inline">Reservas próximamente</span>
+                            <span className="sm:hidden">Próximamente</span>
+                          </p>
                         </div>
                       ) : (
-                        <div className="space-y-3">
+                        <div className="space-y-2 sm:space-y-3">
                           {!slot.allowStandingOnly && availability.availableSeats > 0 && (
                             <Button
                               onClick={() => onSlotSelection(slot, 'asiento')}
-                              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
+                              className="w-full bg-blue-600 hover:bg-blue-700 text-white h-8 sm:h-9 lg:h-10 text-xs sm:text-sm"
                             >
-                              <UserCheck className="h-4 w-4 mr-2" />
-                              Reservar Asiento
+                              <UserCheck className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Reservar Asiento</span>
+                              <span className="sm:hidden">Asiento</span>
                             </Button>
                           )}
                           
                           {(slot.maxStanding > 0 || slot.allowStandingOnly) && availability.availableStanding > 0 && (
                             <Button
                               onClick={() => onSlotSelection(slot, 'parado')}
-                              className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+                              className="w-full bg-orange-600 hover:bg-orange-700 text-white h-8 sm:h-9 lg:h-10 text-xs sm:text-sm"
                             >
-                              <UserCheck className="h-4 w-4 mr-2" />
-                              Reservar De Pie
+                              <UserCheck className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                              <span className="hidden sm:inline">Reservar De Pie</span>
+                              <span className="sm:hidden">De Pie</span>
                             </Button>
                           )}
                         </div>

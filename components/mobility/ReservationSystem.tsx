@@ -93,7 +93,7 @@ export default function ReservationSystem({ user }: ReservationSystemProps) {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 lg:space-y-8">
+    <div className="space-y-3 sm:space-y-4 lg:space-y-6 xl:space-y-8">
       {/* Header with current time */}
       <ReservationHeader currentTime={currentPeruTime} />
 

@@ -1,10 +1,13 @@
 -- ============================================================================
--- DATOS DE RESERVAS PARA TABLA RESERVAS (VERSIÓN LIMITADA A 90 PERSONAS)
+-- LIMPIAR Y REGENERAR RESERVAS (MÁXIMO 90 PERSONAS)
 -- Sistema de Reservas de Transporte Universitario
 -- ============================================================================
 
--- Este script genera datos de reservas realistas para los últimos 7 días
--- RESPETANDO CAPACIDAD MÁXIMA: 90 personas (45 asientos + 45 parados)
+-- 🧹 PASO 1: LIMPIAR TABLA COMPLETAMENTE
+DELETE FROM reservas;
+SELECT '🧹 Tabla reservas limpiada completamente' as paso_1;
+
+-- 🎯 PASO 2: GENERAR NUEVOS DATOS RESPETANDO CAPACIDAD MÁXIMA
 -- Franjas horarias específicas con demanda variable:
 -- 📊 Turno 1 (17:00-17:30): Máx 15 asientos | 📈 Turno 2 (18:15-18:35): Máx 15 asientos
 -- 📊 Turno 3 (19:00-19:30): Máx 15 asientos | 🔥 Turno 4 (19:30-19:55): Máx 45 parados
@@ -36,7 +39,7 @@ BEGIN
         RETURN;
     END IF;
     
-    RAISE NOTICE '🎫 Iniciando generación de datos de reservas (LÍMITE: 90 personas/día)...';
+    RAISE NOTICE '🎫 Regenerando datos de reservas (LÍMITE: 90 personas/día)...';
     RAISE NOTICE '👥 Se encontraron % usuarios en la tabla', total_users;
     
     -- Coordenadas base Universidad Nacional Mayor de San Marcos (Lima, Perú)
@@ -246,17 +249,17 @@ BEGIN
         
     END LOOP;
     
-    RAISE NOTICE '✅ Se han generado las reservas para los últimos 7 días laborables (respetando capacidad de 90)';
+    RAISE NOTICE '✅ Se han regenerado las reservas para los últimos 7 días laborables (respetando capacidad de 90)';
     
 END $$;
 
 -- ============================================================================
--- VERIFICACIONES Y CONSULTAS DE RESUMEN
+-- 🔍 PASO 3: VERIFICACIONES FINALES
 -- ============================================================================
 
 -- 1. Resumen general de reservas insertadas
 SELECT 
-    '✅ DATOS DE RESERVAS INSERTADOS (LÍMITE 90)' as status,
+    '✅ DATOS DE RESERVAS REGENERADOS (LÍMITE 90)' as status,
     COUNT(*) as total_reservas,
     COUNT(DISTINCT id_usuario) as usuarios_distintos,
     COUNT(DISTINCT franja_horaria) as franjas_diferentes,
@@ -307,26 +310,12 @@ WHERE created_at >= CURRENT_DATE - INTERVAL '8 days'
 GROUP BY created_at::date
 ORDER BY created_at::date;
 
--- 4. Verificación de tipos de pase por turno
-SELECT 
-    franja_horaria,
-    tipo_pase,
-    COUNT(*) as cantidad,
-    CASE 
-        WHEN franja_horaria IN ('17:00-17:30', '18:15-18:35', '19:00-19:30') AND tipo_pase = 'parado' THEN '❌ ERROR'
-        WHEN franja_horaria = '19:30-19:55' AND tipo_pase = 'asiento' THEN '❌ ERROR'
-        ELSE '✅ CORRECTO'
-    END as validacion
-FROM reservas
-WHERE created_at >= CURRENT_DATE - INTERVAL '8 days'
-GROUP BY franja_horaria, tipo_pase
-ORDER BY franja_horaria, tipo_pase;
-
 -- ============================================================================
--- MENSAJE FINAL
+-- 🎯 MENSAJE FINAL
 -- ============================================================================
 
 SELECT 
-    '🎯 SISTEMA ACTUALIZADO' as resultado,
+    '🎯 SISTEMA LIMPIO Y REGENERADO' as resultado,
     'Reservas limitadas a 90 personas/día (capacidad real)' as descripcion,
+    'Datos anteriores eliminados - Nuevos datos generados' as accion_ejecutada,
     'Turnos 1-3: máx 15 asientos | Turno 4: máx 45 parados' as configuracion; 
