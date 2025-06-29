@@ -23,8 +23,18 @@ import {
   calculateOptimalRedistribution,
   generateSampleData
 } from '../utils/queueTheory';
+import { supabase } from '@/lib/supabase';
+
+interface ReservationCounts {
+  franja_horaria: string;
+  total_reservas: number;
+  asientos_ocupados: number;
+  parados_ocupados: number;
+}
 
 export function useQueueSimulation() {
+  const [reservationCounts, setReservationCounts] = useState<ReservationCounts[]>([]);
+
   // Estados principales
   const [dashboardState, setDashboardState] = useState<DashboardState>(() => {
     const sampleData = generateSampleData();
@@ -40,9 +50,9 @@ export function useQueueSimulation() {
       turnConfigs: [
         {
           turnId: 'turn-1',
-          label: 'Turno 1 (Asientos)',
-          startTime: '03:00',
-          endTime: '04:50',
+          label: 'Turno 1 (17:00-17:30)',
+          startTime: '17:00',
+          endTime: '17:30',
           maxSeats: 15,
           maxStanding: 0,
           isSeatedTurn: true,
@@ -51,9 +61,9 @@ export function useQueueSimulation() {
         },
         {
           turnId: 'turn-2',
-          label: 'Turno 2 (Asientos)',
-          startTime: '18:00',
-          endTime: '18:45',
+          label: 'Turno 2 (18:15-18:35)',
+          startTime: '18:15',
+          endTime: '18:35',
           maxSeats: 15,
           maxStanding: 0,
           isSeatedTurn: true,
@@ -62,9 +72,9 @@ export function useQueueSimulation() {
         },
         {
           turnId: 'turn-3',
-          label: 'Turno 3 (Asientos)',
+          label: 'Turno 3 (19:00-19:30)',
           startTime: '19:00',
-          endTime: '19:40',
+          endTime: '19:30',
           maxSeats: 15,
           maxStanding: 0,
           isSeatedTurn: true,
@@ -73,9 +83,9 @@ export function useQueueSimulation() {
         },
         {
           turnId: 'turn-4',
-          label: 'Turno 4 (Parados)',
-          startTime: '19:15',
-          endTime: '19:50',
+          label: 'Turno 4 (19:30-19:55)',
+          startTime: '19:30',
+          endTime: '19:55',
           maxSeats: 0,
           maxStanding: 45,
           isSeatedTurn: false,
@@ -368,6 +378,51 @@ export function useQueueSimulation() {
     }));
   }, [simulationParams, stopSimulation]);
 
+  // Función para obtener datos reales de reservas
+  const fetchReservationCounts = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.rpc('get_reservation_counts');
+      if (error) throw error;
+      
+      setReservationCounts(data || []);
+      
+      // Actualizar turnConfigs con datos reales
+      setDashboardState(prev => ({
+        ...prev,
+        turnConfigs: prev.turnConfigs.map(config => {
+          const franja = `${config.startTime}-${config.endTime}`;
+          const reservationData = data?.find((r: ReservationCounts) => r.franja_horaria === franja);
+          
+          if (reservationData) {
+            const totalCapacity = config.maxSeats + config.maxStanding;
+            const currentReservations = reservationData.total_reservas;
+            const availableSlots = Math.max(0, totalCapacity - currentReservations);
+            
+            return {
+              ...config,
+              currentReservations,
+              availableSlots
+            };
+          }
+          
+          return config;
+        })
+      }));
+    } catch (error) {
+      console.error('Error fetching reservation counts:', error);
+      setError(`Error cargando datos de reservas: ${error}`);
+    }
+  }, []);
+
+  // Cargar datos reales al montar el componente
+  useEffect(() => {
+    fetchReservationCounts();
+    
+    // Actualizar cada 30 segundos
+    const interval = setInterval(fetchReservationCounts, 30000);
+    return () => clearInterval(interval);
+  }, [fetchReservationCounts]);
+
   // Cleanup al desmontar
   useEffect(() => {
     return () => {
@@ -383,6 +438,7 @@ export function useQueueSimulation() {
     simulationParams,
     isLoading,
     error,
+    reservationCounts,
 
     // Funciones
     updateParameters,
@@ -391,6 +447,7 @@ export function useQueueSimulation() {
     stopSimulation,
     resetSimulation,
     applyRedistribution,
+    fetchReservationCounts,
 
     // Datos computados
     isSimulationRunning: dashboardState.simulation.isRunning,
