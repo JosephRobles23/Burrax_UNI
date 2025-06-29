@@ -19,11 +19,13 @@ import {
   Sparkles,
   Bus,
   Clock,
-  Upload
+  Upload,
+  BarChart3
 } from 'lucide-react';
 import { toast } from 'sonner';
 import ReservationSystem from '@/components/mobility/ReservationSystem';
 import { DocumentUploadModal } from '@/components/documents';
+import QueueSimulationDashboard from '@/app/dashboard/components/QueueSimulationDashboard';
 
 interface UserData {
   id: string;
@@ -141,7 +143,7 @@ export default function Dashboard({ user }: DashboardProps) {
 
         {/* Navigation Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-white/5 max-w-md mx-auto">
+          <TabsList className="grid w-full grid-cols-3 mb-6 sm:mb-8 bg-white/5 max-w-lg mx-auto">
             <TabsTrigger 
               value="profile" 
               className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-white py-2.5 text-sm sm:text-base"
@@ -157,6 +159,14 @@ export default function Dashboard({ user }: DashboardProps) {
               <Bus className="h-4 w-4 mr-1 sm:mr-2" />
               <span className="hidden xs:inline">Movilidad</span>
               <span className="xs:hidden">Buses</span>
+            </TabsTrigger>
+            <TabsTrigger 
+              value="dashboard" 
+              className="data-[state=active]:bg-yellow-500 data-[state=active]:text-black text-white py-2.5 text-sm sm:text-base"
+            >
+              <BarChart3 className="h-4 w-4 mr-1 sm:mr-2" />
+              <span className="hidden xs:inline">Dashboard</span>
+              <span className="xs:hidden">Datos</span>
             </TabsTrigger>
           </TabsList>
 
@@ -382,6 +392,33 @@ export default function Dashboard({ user }: DashboardProps) {
                 </h2>
                 <p className="text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base px-4">
                   Para acceder al sistema de reservas de movilidad, primero debes completar tu registro subiendo todos los documentos requeridos.
+                </p>
+                <Button
+                  onClick={() => setActiveTab('profile')}
+                  className="golden-button w-full sm:w-auto"
+                >
+                  Ir a Mi Perfil
+                </Button>
+              </Card>
+            )}
+          </TabsContent>
+
+          {/* Dashboard Tab */}
+          <TabsContent value="dashboard" className="space-y-6 sm:space-y-8">
+            {isProfileComplete ? (
+              <div className="relative">
+                {/* Override the background for the dashboard */}
+                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg -z-10"></div>
+                <QueueSimulationDashboard />
+              </div>
+            ) : (
+              <Card className="glass-card p-6 sm:p-8 text-center">
+                <BarChart3 className="mx-auto w-12 h-12 sm:w-16 sm:h-16 text-yellow-500 mb-4 sm:mb-6" />
+                <h2 className="text-xl sm:text-2xl font-bold text-white mb-3 sm:mb-4">
+                  Completa tu Perfil
+                </h2>
+                <p className="text-gray-400 mb-4 sm:mb-6 text-sm sm:text-base px-4">
+                  Para acceder al dashboard de simulación de colas, primero debes completar tu registro subiendo todos los documentos requeridos.
                 </p>
                 <Button
                   onClick={() => setActiveTab('profile')}

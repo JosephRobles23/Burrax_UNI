@@ -3,34 +3,21 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import InfoCard from '@/components/ui/info-card';
+import LoadingButton from '@/components/ui/loading-button';
 import { 
   Clock, 
   ArrowRight, 
   Users, 
   AlertCircle, 
   CheckCircle,
-  RotateCcw
+  RotateCcw,
+  X
 } from 'lucide-react';
-
-interface TimeSlot {
-  id: string;
-  label: string;
-  startTime: string;
-  endTime: string;
-  maxSeats: number;
-  maxStanding: number;
-  isActive: boolean;
-  allowStandingOnly: boolean;
-}
-
-interface ReservationCounts {
-  franja_horaria: string;
-  total_reservas: number;
-  asientos_ocupados: number;
-  parados_ocupados: number;
-}
+import { TimeSlot, ReservationCounts } from '@/app/reservations/types';
 
 interface RedistributionLog {
   from_slot: string;
@@ -44,12 +31,16 @@ interface SeatRedistributionProps {
   timeSlots: TimeSlot[];
   reservationCounts: ReservationCounts[];
   onRedistributionComplete: () => void;
+  isOpen?: boolean;
+  onClose?: () => void;
 }
 
 export default function SeatRedistribution({
   timeSlots,
   reservationCounts,
   onRedistributionComplete,
+  isOpen = true,
+  onClose,
 }: SeatRedistributionProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [redistributionLogs, setRedistributionLogs] = useState<RedistributionLog[]>([]);
@@ -220,131 +211,157 @@ export default function SeatRedistribution({
 
   const summary = getRedistributionSummary();
 
+  if (!isOpen) return null;
+
   return (
-    <div className="space-y-4">
-      {/* Estado y Resumen */}
-      <Card className="glass-card p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <div className={`w-3 h-3 rounded-full ${isProcessing ? 'bg-yellow-500 animate-pulse' : 'bg-green-500'}`}></div>
-            <div>
-              <h4 className="font-semibold text-white">Sistema de Redistribución</h4>
-              <p className="text-sm text-gray-400">
-                {isProcessing ? 'Procesando...' : 'Monitoreo activo cada 2 minutos'}
-              </p>
-            </div>
-          </div>
-          
-          <div className="text-right">
-            <p className="text-sm text-gray-400">Última verificación:</p>
-            <p className="text-xs text-yellow-400">
-              {lastCheckTime ? lastCheckTime.toLocaleTimeString('es-PE') : 'Pendiente'}
-            </p>
-          </div>
-        </div>
-      </Card>
-
-      {/* Resumen de Transferencias */}
-      {summary.totalTransfers > 0 && (
-        <Card className="glass-card p-4">
-          <h4 className="font-semibold text-white mb-3 flex items-center">
-            <ArrowRight className="h-4 w-4 mr-2 text-blue-400" />
-            Historial de Redistribuciones
-          </h4>
-          
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-            <div className="text-center">
-              <div className="text-2xl font-bold text-blue-400">{summary.totalTransfers}</div>
-              <div className="text-sm text-gray-400">Transferencias</div>
-            </div>
-            <div className="text-center">
-              <div className="text-2xl font-bold text-green-400">{summary.totalSeatsTransferred}</div>
-              <div className="text-sm text-gray-400">Asientos Redistribuidos</div>
-            </div>
-            <div className="text-center">
-              <button
-                onClick={resetCapacities}
-                disabled={isProcessing}
-                className="flex items-center space-x-1 mx-auto px-3 py-1 bg-orange-600/20 border border-orange-500 text-orange-400 rounded-md hover:bg-orange-600/30 disabled:opacity-50"
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto bg-gray-900 border-gray-700">
+        <DialogHeader>
+          <div className="flex items-center justify-between">
+            <DialogTitle className="text-xl font-bold text-white flex items-center">
+              <Users className="h-5 w-5 mr-2 text-blue-400" />
+              Sistema de Redistribución de Asientos
+            </DialogTitle>
+            {onClose && (
+              <Button
+                onClick={onClose}
+                variant="ghost"
+                size="sm"
+                className="text-gray-400 hover:text-white"
               >
-                <RotateCcw className="h-4 w-4" />
-                <span className="text-sm">Reset</span>
-              </button>
-            </div>
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
+        </DialogHeader>
+        
+        <div className="space-y-4">
+          {/* Estado y Resumen */}
+          <InfoCard
+            title="Sistema de Redistribución"
+            icon={isProcessing ? Clock : CheckCircle}
+            iconColor={isProcessing ? "text-yellow-500" : "text-green-500"}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-gray-400">
+                  {isProcessing ? 'Procesando...' : 'Monitoreo activo cada 2 minutos'}
+                </p>
+              </div>
+              
+              <div className="text-right">
+                <p className="text-sm text-gray-400">Última verificación:</p>
+                <p className="text-xs text-yellow-400">
+                  {lastCheckTime ? lastCheckTime.toLocaleTimeString('es-PE') : 'Pendiente'}
+                </p>
+              </div>
+            </div>
+          </InfoCard>
 
-          {/* Últimas transferencias */}
-          <div className="space-y-2 max-h-40 overflow-y-auto">
-            {redistributionLogs.slice(-5).reverse().map((log, index) => (
-              <div key={index} className="flex items-center justify-between p-2 bg-white/5 rounded">
-                <div className="flex items-center space-x-2">
-                  <ArrowRight className="h-3 w-3 text-gray-400" />
-                  <span className="text-sm text-gray-300">
-                    {log.seats_transferred} asientos
-                  </span>
+          {/* Resumen de Transferencias */}
+          {summary.totalTransfers > 0 && (
+            <InfoCard
+              title="Historial de Redistribuciones"
+              icon={ArrowRight}
+              iconColor="text-blue-400"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-400">{summary.totalTransfers}</div>
+                  <div className="text-sm text-gray-400">Transferencias</div>
                 </div>
-                <div className="text-xs text-gray-400">
-                  {log.timestamp.toLocaleTimeString('es-PE')}
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-400">{summary.totalSeatsTransferred}</div>
+                  <div className="text-sm text-gray-400">Asientos Redistribuidos</div>
+                </div>
+                <div className="text-center">
+                  <LoadingButton
+                    onClick={resetCapacities}
+                    isLoading={isProcessing}
+                    loadingText="Reseteando..."
+                    variant="outline"
+                    size="sm"
+                    className="border-orange-500 text-orange-400 hover:bg-orange-500/10"
+                  >
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    Reset
+                  </LoadingButton>
                 </div>
               </div>
-            ))}
-          </div>
-        </Card>
-      )}
 
-      {/* Estado de Turnos */}
-      <Card className="glass-card p-4">
-        <h4 className="font-semibold text-white mb-3 flex items-center">
-          <Clock className="h-4 w-4 mr-2 text-yellow-400" />
-          Estado de Turnos
-        </h4>
-        
-        <div className="space-y-2">
-          {timeSlots.filter(slot => !slot.allowStandingOnly).map((slot, index) => {
-            const isExpired = isSlotExpired(slot);
-            const availableSeats = getAvailableSeats(slot);
-            const usedSeats = slot.maxSeats - availableSeats;
-            
-            return (
-              <div key={slot.id} className="flex items-center justify-between p-3 bg-white/5 rounded">
-                <div className="flex items-center space-x-3">
-                  <Badge className={`${
-                    isExpired ? 'bg-gray-500/20 text-gray-400' : 
-                    slot.isActive ? 'bg-green-500/20 text-green-400' : 
-                    'bg-blue-500/20 text-blue-400'
-                  }`}>
-                    {isExpired ? 'Expirado' : slot.isActive ? 'Activo' : 'Próximo'}
-                  </Badge>
-                  
-                  <div>
-                    <p className="text-sm font-medium text-white">{slot.label}</p>
-                    <p className="text-xs text-gray-400">
-                      Capacidad: {slot.maxSeats} asientos
-                    </p>
-                  </div>
-                </div>
-                
-                <div className="text-right">
-                  <div className="flex items-center space-x-2">
-                    <Users className="h-4 w-4 text-blue-400" />
-                    <span className="text-sm text-white">
-                      {usedSeats}/{slot.maxSeats}
-                    </span>
-                  </div>
-                  {availableSeats > 0 && isExpired && (
-                    <div className="flex items-center space-x-1 mt-1">
-                      <AlertCircle className="h-3 w-3 text-orange-400" />
-                      <span className="text-xs text-orange-400">
-                        {availableSeats} sin usar
+              {/* Últimas transferencias */}
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {redistributionLogs.slice(-5).reverse().map((log, index) => (
+                  <div key={index} className="flex items-center justify-between p-2 bg-white/5 rounded">
+                    <div className="flex items-center space-x-2">
+                      <ArrowRight className="h-3 w-3 text-gray-400" />
+                      <span className="text-sm text-gray-300">
+                        {log.seats_transferred} asientos
                       </span>
                     </div>
-                  )}
-                </div>
+                    <div className="text-xs text-gray-400">
+                      {log.timestamp.toLocaleTimeString('es-PE')}
+                    </div>
+                  </div>
+                ))}
               </div>
-            );
-          })}
+            </InfoCard>
+          )}
+
+          {/* Estado de Turnos */}
+          <InfoCard
+            title="Estado de Turnos"
+            icon={Clock}
+            iconColor="text-yellow-400"
+          >
+            <div className="space-y-2">
+              {timeSlots.filter(slot => !slot.allowStandingOnly).map((slot) => {
+                const isExpired = isSlotExpired(slot);
+                const availableSeats = getAvailableSeats(slot);
+                const usedSeats = slot.maxSeats - availableSeats;
+                
+                return (
+                  <div key={slot.id} className="flex items-center justify-between p-3 bg-white/5 rounded">
+                    <div className="flex items-center space-x-3">
+                      <Badge className={`${
+                        isExpired ? 'bg-gray-500/20 text-gray-400' : 
+                        slot.isActive ? 'bg-green-500/20 text-green-400' : 
+                        'bg-blue-500/20 text-blue-400'
+                      }`}>
+                        {isExpired ? 'Expirado' : slot.isActive ? 'Activo' : 'Próximo'}
+                      </Badge>
+                      
+                      <div>
+                        <p className="text-sm font-medium text-white">{slot.label}</p>
+                        <p className="text-xs text-gray-400">
+                          Capacidad: {slot.maxSeats} asientos
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="text-right">
+                      <div className="flex items-center space-x-2">
+                        <Users className="h-4 w-4 text-blue-400" />
+                        <span className="text-sm text-white">
+                          {usedSeats}/{slot.maxSeats}
+                        </span>
+                      </div>
+                      {availableSeats > 0 && isExpired && (
+                        <div className="flex items-center space-x-1 mt-1">
+                          <AlertCircle className="h-3 w-3 text-orange-400" />
+                          <span className="text-xs text-orange-400">
+                            {availableSeats} sin usar
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </InfoCard>
         </div>
-      </Card>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 } 

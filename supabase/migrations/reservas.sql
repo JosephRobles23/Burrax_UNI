@@ -87,3 +87,15 @@ BEGIN
   GROUP BY r.franja_horaria;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Create function to get current user reservations
+CREATE OR REPLACE FUNCTION get_current_user_reservations()
+RETURNS SETOF reservas AS $$
+BEGIN
+  RETURN QUERY
+  SELECT *
+  FROM reservas
+  WHERE id_usuario = auth.uid()
+  ORDER BY created_at DESC;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;

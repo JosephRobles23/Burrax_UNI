@@ -2,36 +2,16 @@
 
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { Clock, Users, UserCheck, AlertCircle } from 'lucide-react';
-
-interface TimeSlot {
-  id: string;
-  label: string;
-  startTime: string;
-  endTime: string;
-  maxSeats: number;
-  maxStanding: number;
-  isActive: boolean;
-  allowStandingOnly: boolean;
-}
-
-interface ReservationCounts {
-  franja_horaria: string;
-  total_reservas: number;
-  asientos_ocupados: number;
-  parados_ocupados: number;
-}
+import StatusBadge from '@/components/ui/status-badge';
+import { TimeSlot, ReservationCounts, SlotAvailability } from '@/app/reservations/types';
 
 interface TimelineScheduleProps {
   timeSlots: TimeSlot[];
   reservationCounts: ReservationCounts[];
   onSlotSelection: (slot: TimeSlot, passType: 'asiento' | 'parado') => void;
-  getSlotAvailability: (slot: TimeSlot) => {
-    availableSeats: number;
-    availableStanding: number;
-    totalAvailable: number;
-  };
+  getSlotAvailability: (slot: TimeSlot) => SlotAvailability;
+  isLoading?: boolean;
 }
 
 export default function TimelineSchedule({
@@ -39,6 +19,7 @@ export default function TimelineSchedule({
   reservationCounts,
   onSlotSelection,
   getSlotAvailability,
+  isLoading = false,
 }: TimelineScheduleProps) {
   const getSlotStatus = (slot: TimeSlot) => {
     const availability = getSlotAvailability(slot);
@@ -117,14 +98,16 @@ export default function TimelineSchedule({
                     <Clock className="h-6 w-6 text-white" />
                   </div>
                   <div className="absolute -bottom-8 left-1/2 transform -translate-x-1/2">
-                    <Badge className={`text-xs whitespace-nowrap ${
-                      slotStatus.status === 'active' ? 'bg-green-500/20 text-green-400' :
-                      slotStatus.status === 'full' ? 'bg-red-500/20 text-red-400' :
-                      slotStatus.status === 'completed' ? 'bg-gray-500/20 text-gray-400' :
-                      'bg-blue-500/20 text-blue-400'
-                    }`}>
-                      {slotStatus.label}
-                    </Badge>
+                    <StatusBadge
+                      status={
+                        slotStatus.status === 'active' ? 'active' :
+                        slotStatus.status === 'full' ? 'full' :
+                        slotStatus.status === 'completed' ? 'completed' :
+                        'upcoming'
+                      }
+                      label={slotStatus.label}
+                      className="text-xs whitespace-nowrap"
+                    />
                   </div>
                 </div>
 

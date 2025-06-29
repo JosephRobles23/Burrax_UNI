@@ -138,7 +138,6 @@ BEGIN
     sc.allow_standing_only,
     sc.is_active
   FROM schedule_config sc
-  WHERE sc.is_active = true
   ORDER BY sc.start_time;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -169,11 +168,12 @@ DELETE FROM schedule_config;
 -- Reset the configuration to exactly 4 slots
 -- 3 slots with seats (15 each = 45 total)
 -- 1 slot with standing only (45 total)
-INSERT INTO schedule_config (slot_id, label, start_time, end_time, max_seats, max_standing, allow_standing_only) VALUES
-('slot-1720', '17:20 - 17:35 PM', '17:20', '17:35', 15, 0, false),
-('slot-1800', '18:00 - 18:20 PM', '18:00', '18:20', 15, 0, false),
-('slot-1855', '18:55 - 19:15 PM', '18:55', '19:15', 15, 0, false),
-('slot-1915', '19:15 - 19:50 PM', '19:15', '19:50', 0, 45, true);
+-- ACTIVAR el primer slot por defecto
+INSERT INTO schedule_config (slot_id, label, start_time, end_time, max_seats, max_standing, allow_standing_only, is_active) VALUES
+('slot-1720', '17:20 - 17:35 PM', '17:20', '17:35', 15, 0, false, true),
+('slot-1800', '18:00 - 18:20 PM', '18:00', '18:20', 15, 0, false, false),
+('slot-1855', '18:55 - 19:15 PM', '18:55', '19:15', 15, 0, false, false),
+('slot-1915', '19:15 - 19:50 PM', '19:15', '19:50', 0, 45, true, false);
 
 -- Add indexes
 CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
@@ -243,6 +243,35 @@ BEGIN
     WHERE slot_id = slot_data->>'slot_id';
   END LOOP;
 
+  RETURN true;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to activate/deactivate specific slots
+CREATE OR REPLACE FUNCTION toggle_slot_activation(
+  slot_id_param text,
+  is_active_param boolean
+)
+RETURNS boolean AS $$
+BEGIN
+  -- Verificar si el usuario es admin
+  IF NOT is_user_admin() THEN
+    RAISE EXCEPTION 'Solo los administradores pueden activar/desactivar horarios';
+  END IF;
+  
+  -- Actualizar el estado del slot
+  UPDATE schedule_config 
+  SET 
+    is_active = is_active_param,
+    updated_at = now(),
+    updated_by = auth.uid()
+  WHERE slot_id = slot_id_param;
+  
+  -- Verificar si se actualizó algún registro
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'Slot % no encontrado', slot_id_param;
+  END IF;
+  
   RETURN true;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
