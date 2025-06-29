@@ -48,7 +48,7 @@ export default function LocationValidationStep({
 
       <LocationValidator 
         onValidation={onValidation}
-        targetLocation={{ lat: -12.020728, lng: -77.048380}}
+        targetLocation={{ lat: -11.945911, lng: 76.990829}} // UNI  - -11.945911, -76.990829
         allowedRadius={1000}
       />
     </div>
