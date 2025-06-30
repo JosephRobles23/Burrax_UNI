@@ -34,3 +34,15 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# folder
+01_insertar_usuarios.sql
+/supabase/
+datos_reservas_finales.sql
+datos_simulation_results.sql
+datos_simulation_timeseries.sql
+README.md
+
+reservas_data_corregido.sql
+reservas_data_fixed.sql
+

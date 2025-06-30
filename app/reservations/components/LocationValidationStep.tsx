@@ -48,8 +48,12 @@ export default function LocationValidationStep({
 
       <LocationValidator 
         onValidation={onValidation}
-        targetLocation={{ lat: -11.945911, lng: 76.990829}} // UNI  - -11.945911, -76.990829
-        allowedRadius={1000}
+        targetLocation={{ lat: -11.945902, lng: -76.990837}} 
+        // Ubicacion de coliseo : -12.020537, -77.048378
+        // Casa Joseph : -11.945902, -76.990837
+
+
+        allowedRadius={600}
       />
     </div>
   );
