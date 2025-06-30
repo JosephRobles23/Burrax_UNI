@@ -1,0 +1,48 @@
+function calculateOptimalRedistribution(turnData: TurnData[]): RedistributionResult[] {
+  const TOTAL_CAPACITY = 90;
+  const MIN_CAPACITY = 5;
+  const MAX_CAPACITY = 60;
+  
+  // Paso 1: Calcular demanda total
+  const totalDemand = turnData.reduce((sum, turn) => sum + turn.currentReservations, 0);
+  
+  // Paso 2: Calcular capacidad proporcional inicial
+  const results: RedistributionResult[] = turnData.map(turn => {
+    const demandRatio = turn.currentReservations / Math.max(totalDemand, 1);
+    let proposedCapacity = Math.round(demandRatio * TOTAL_CAPACITY);
+    
+    // Paso 3: Aplicar restricciones
+    proposedCapacity = Math.max(MIN_CAPACITY, Math.min(MAX_CAPACITY, proposedCapacity));
+    
+    // Paso 4: Calcular métricas con nueva capacidad
+    const currentMetrics = calculateMM1KMetrics({
+      arrivalRate: turn.arrivalRate,
+      serviceRate: turn.serviceRate,
+      capacity: turn.currentCapacity
+    });
+    
+    const newMetrics = calculateMM1KMetrics({
+      arrivalRate: turn.arrivalRate,
+      serviceRate: turn.serviceRate,
+      capacity: proposedCapacity
+    });
+    
+    // Paso 5: Calcular mejora esperada
+    const currentEfficiency = currentMetrics.systemEfficiency;
+    const newEfficiency = newMetrics.systemEfficiency;
+    const improvement = ((newEfficiency - currentEfficiency) / currentEfficiency) * 100;
+    
+    return {
+      turnId: turn.turnId,
+      currentCapacity: turn.currentCapacity,
+      recommendedCapacity: proposedCapacity,
+      improvement: improvement,
+      action: determineAction(turn.currentCapacity, proposedCapacity)
+    };
+  });
+  
+  // Paso 6: Ajustar para mantener capacidad total
+  adjustToTotalCapacity(results, TOTAL_CAPACITY);
+  
+  return results;
+}
