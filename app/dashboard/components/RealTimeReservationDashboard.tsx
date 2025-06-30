@@ -18,6 +18,7 @@ import {
   MapPin
 } from 'lucide-react';
 import { useRealTimeReservations } from '../hooks/useRealTimeReservations';
+import { RedistributionModal } from './RedistributionModal';
 
 interface RealTimeReservationDashboardProps {
   embedded?: boolean; // Nueva prop para controlar si está embebido
@@ -82,17 +83,31 @@ export default function RealTimeReservationDashboard({ embedded = false }: RealT
                 {embedded ? "Reservas en Tiempo Real" : "Dashboard de Reservas en Tiempo Real"}
               </h1>
               <p className={`text-xs sm:text-sm ${embedded ? "text-gray-300" : "text-blue-200"}`}>
-                Sistema de Transporte Universitario - UNMSM
+                Sistema de Transporte Universitario - UNI
               </p>
             </div>
             
             <div className="flex flex-row items-center justify-between  sm:flex-row items-start sm:items-center space-y-2 sm:space-y-0 sm:space-x-3 lg:space-x-4">
               {/* Estado de conexión - Compacto */}
-              <div className="flex items-center space-x-2 bg-white/10 rounded-lg px-2 sm:px-3 py-1.5 sm:py-2">
+              <div className="flex items-center space-x-2 bg-white/10 rounded-lg px-2 m-2 sm:px-3 py-1.5 sm:py-2">
                 <status.icon className={`h-3 w-3 sm:h-4 sm:w-4 ${status.color} ${isLoading ? 'animate-spin' : ''}`} />
                 <span className="text-white text-xs sm:text-sm">{status.label}</span>
               </div>
               
+              {/* Botón de redistribución */}
+              <RedistributionModal 
+                trigger={
+                  <Button 
+                    size="sm"
+                    className="bg-yellow-600 hover:bg-yellow-700 text-white h-8 sm:h-9 text-xs sm:text-sm px-2 sm:px-3"
+                  >
+                    <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                    <span className="hidden sm:inline">Redistribuir</span>
+                    <span className="sm:hidden">Redistribuir</span>
+                  </Button>
+                }
+              />
+
               {/* Botón de actualización - Compacto */}
               <Button 
                 onClick={refreshData}
@@ -102,7 +117,7 @@ export default function RealTimeReservationDashboard({ embedded = false }: RealT
               >
                 <RefreshCw className={`h-2 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2 ${isLoading ? 'animate-spin' : ''}`} />
                 <span className="hidden xs:inline">Actualizar</span>
-                <span className="xs:hidden">Act.</span>
+                <span className="xs:hidden">Actualizar</span>
               </Button>
             </div>
           </div>

@@ -4,7 +4,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,9 @@ import {
   PauseCircle,
   RotateCcw
 } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Progress } from '@/components/ui/progress';
+import { LineChart } from '@/components/ui/chart';
 
 import { useQueueSimulation } from '../hooks';
 import QueueMetricsCards from './QueueMetricsCards';
@@ -26,8 +29,24 @@ import QueueVisualization from './QueueVisualization';
 import TurnRedistributionPanel from './TurnRedistributionPanel';
 import SimulationControls from './SimulationControls';
 import QueueChartsGrid from './QueueChartsGrid';
+import {
+  calculateMM1KMetrics,
+  calculateSystemEfficiency,
+  generateSystemRecommendations,
+  simulateSystemBehavior
+} from '../utils/queueTheory';
 
-export default function QueueSimulationDashboard() {
+interface QueueSimulationDashboardProps {
+  turnConfig?: {
+    turnId: string;
+    label: string;
+    capacity: number;
+    arrivalRate: number;
+    serviceRate: number;
+  };
+}
+
+export default function QueueSimulationDashboard({ turnConfig }: QueueSimulationDashboardProps = {}) {
   const {
     dashboardState,
     simulationParams,
@@ -42,6 +61,47 @@ export default function QueueSimulationDashboard() {
     isSimulationRunning,
     progress
   } = useQueueSimulation();
+
+  // Valores por defecto si no se proporciona turnConfig
+  const defaultTurnConfig = {
+    turnId: 'default',
+    label: 'Turno por Defecto',
+    capacity: 45,
+    arrivalRate: 30, // 30 estudiantes por hora
+    serviceRate: 35  // 35 estudiantes por hora
+  };
+
+  const currentConfig = turnConfig || defaultTurnConfig;
+
+  const [metrics, setMetrics] = useState<any>(null);
+  const [efficiency, setEfficiency] = useState<number>(0);
+  const [recommendations, setRecommendations] = useState<string[]>([]);
+  const [simulation, setSimulation] = useState<any>(null);
+
+  useEffect(() => {
+
+    // Calcular métricas del modelo M/M/1/K
+    const mm1kParams = {
+      arrivalRate: currentConfig.arrivalRate,
+      serviceRate: currentConfig.serviceRate,
+      systemCapacity: 90, // Capacidad máxima del bus
+      turnCapacity: currentConfig.capacity // Capacidad específica del turno
+    };
+
+    const calculatedMetrics = calculateMM1KMetrics(mm1kParams);
+    const systemEfficiency = calculateSystemEfficiency(calculatedMetrics);
+    const systemRecommendations = generateSystemRecommendations(calculatedMetrics);
+    
+    // Simular comportamiento del sistema por 60 minutos
+    const simulationResults = simulateSystemBehavior(mm1kParams, 60);
+
+    setMetrics(calculatedMetrics);
+    setEfficiency(systemEfficiency);
+    setRecommendations(systemRecommendations);
+    setSimulation(simulationResults);
+  }, [turnConfig]);
+
+  if (!metrics) return <div>Cargando...</div>;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
@@ -166,111 +226,95 @@ export default function QueueSimulationDashboard() {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
-              {/* Queue Parameters */}
+            <div className="space-y-4">
+              {/* Métricas Principales */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Utilización del Sistema</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{(metrics.ρ * 100).toFixed(1)}%</div>
+                    <Progress value={metrics.ρ * 100} className="mt-2" />
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Tiempo Promedio de Espera</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{metrics.Wq.toFixed(1)} min</div>
+                    <p className="text-sm text-gray-500">En cola</p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Probabilidad de Rechazo</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{(metrics.Pk * 100).toFixed(1)}%</div>
+                    <p className="text-sm text-gray-500">Estudiantes no admitidos</p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Eficiencia del Sistema */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Settings className="h-5 w-5" />
-                    Parámetros de Cola
-                  </CardTitle>
-                  <CardDescription>
-                    Configuración del sistema M/M/1/K
-                  </CardDescription>
+                  <CardTitle>Eficiencia del Sistema</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="text-sm font-medium">Tasa de Llegada (λ)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        value={dashboardState.parameters.lambda}
-                        onChange={(e) => updateParameters({ lambda: parseFloat(e.target.value) })}
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        placeholder="2.5"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">estudiantes/min</p>
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium">Tasa de Servicio (μ)</label>
-                      <input
-                        type="number"
-                        step="0.1"
-                        min="0.1"
-                        value={dashboardState.parameters.mu}
-                        onChange={(e) => updateParameters({ mu: parseFloat(e.target.value) })}
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        placeholder="2.0"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">servicios/min</p>
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium">Capacidad (K)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        value={dashboardState.parameters.K}
-                        onChange={(e) => updateParameters({ K: parseInt(e.target.value) })}
-                        className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-md text-sm"
-                        placeholder="45"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">máximo en sistema</p>
-                    </div>
-                    
-                    <div>
-                      <label className="text-sm font-medium">Utilización (ρ)</label>
-                      <input
-                        type="text"
-                        value={dashboardState.parameters.rho.toFixed(2)}
-                        readOnly
-                        className="w-full mt-1 px-3 py-2 border border-gray-200 rounded-md text-sm bg-gray-50"
-                      />
-                      <p className="text-xs text-gray-500 mt-1">λ/μ (automático)</p>
-                    </div>
-                  </div>
+                <CardContent>
+                  <div className="text-3xl font-bold mb-2">{efficiency.toFixed(1)}%</div>
+                  <Progress value={efficiency} className="h-2" />
                 </CardContent>
               </Card>
 
-              {/* Turn Configuration */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <Users className="h-5 w-5" />
-                    Configuración de Turnos
-                  </CardTitle>
-                  <CardDescription>
-                    Capacidad y horarios por turno
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    {dashboardState.turnConfigs.map((turn, index) => (
-                      <div key={turn.turnId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                        <div>
-                          <div className="font-medium text-sm">{turn.label}</div>
-                          <div className="text-xs text-gray-500">
-                            {turn.startTime} - {turn.endTime}
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <div className="text-sm font-medium">
-                            {turn.isSeatedTurn ? turn.maxSeats : turn.maxStanding} 
-                            {turn.isSeatedTurn ? ' asientos' : ' parados'}
-                          </div>
-                          <div className="text-xs text-gray-500">
-                            {turn.availableSlots} disponibles
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Gráfico de Simulación */}
+              {simulation && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Simulación de Cola (60 minutos)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <LineChart
+                      data={{
+                        labels: simulation.timePoints.map((t: number) => t.toFixed(0)),
+                        datasets: [{
+                          label: 'Longitud de Cola',
+                          data: simulation.queueLengths,
+                          borderColor: 'rgb(75, 192, 192)',
+                          tension: 0.1
+                        }]
+                      }}
+                      options={{
+                        responsive: true,
+                                                 scales: {
+                           y: {
+                             beginAtZero: true,
+                             max: Math.max(currentConfig.capacity, ...simulation.queueLengths)
+                           }
+                         }
+                      }}
+                    />
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Recomendaciones */}
+              {recommendations.length > 0 && (
+                <Alert>
+                  <AlertTitle>Recomendaciones del Sistema</AlertTitle>
+                  <AlertDescription>
+                    <ul className="list-disc pl-4 mt-2">
+                      {recommendations.map((rec, index) => (
+                        <li key={index}>{rec}</li>
+                      ))}
+                    </ul>
+                  </AlertDescription>
+                </Alert>
+              )}
             </div>
           </TabsContent>
         </Tabs>

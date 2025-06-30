@@ -4,103 +4,186 @@
 
 import { QueueParameters, QueueMetrics, QueueCalculationResult } from '../types';
 
-/**
- * Calcula las métricas de un sistema de colas M/M/1/K
- * @param lambda Tasa de llegada (λ)
- * @param mu Tasa de servicio (μ)
- * @param K Capacidad máxima del sistema
- */
-export function calculateMM1KMetrics(
-  lambda: number,
-  mu: number,
-  K: number
-): QueueCalculationResult {
-  try {
-    // Validaciones de entrada
-    if (lambda <= 0 || mu <= 0 || K <= 0) {
-      return {
-        success: false,
-        error: 'Los parámetros deben ser positivos',
-        metrics: {} as QueueMetrics
-      };
-    }
-
-    if (!Number.isFinite(lambda) || !Number.isFinite(mu) || !Number.isFinite(K)) {
-      return {
-        success: false,
-        error: 'Los parámetros deben ser números finitos',
-        metrics: {} as QueueMetrics
-      };
-    }
-
-    const rho = lambda / mu; // Utilización
-    let P0: number; // Probabilidad de sistema vacío
-    
-    // Calcular P0 según el valor de rho
-    if (Math.abs(rho - 1) < 1e-10) {
-      // Caso especial: rho = 1
-      P0 = 1 / (K + 1);
-    } else {
-      // Caso general: rho ≠ 1
-      P0 = (1 - rho) / (1 - Math.pow(rho, K + 1));
-    }
-
-    // Probabilidad de sistema lleno (pérdida)
-    const Pk = P0 * Math.pow(rho, K);
-    const Ploss = Pk;
-
-    // Tasa efectiva de llegada (considerando pérdidas)
-    const lambdaEff = lambda * (1 - Ploss);
-
-    // Número promedio en el sistema (L)
-    let L: number;
-    if (Math.abs(rho - 1) < 1e-10) {
-      L = K / 2;
-    } else {
-      L = (rho * (1 - (K + 1) * Math.pow(rho, K) + K * Math.pow(rho, K + 1))) /
-          ((1 - rho) * (1 - Math.pow(rho, K + 1)));
-    }
-
-    // Número promedio en cola (Lq)
-    const Lq = L - (lambdaEff / mu);
-
-    // Tiempo promedio en el sistema (W) - Ley de Little
-    const W = L / lambdaEff;
-
-    // Tiempo promedio en cola (Wq)
-    const Wq = Lq / lambdaEff;
-
-    // Utilización del servidor
-    const utilization = lambdaEff / mu;
-
-    // Tasa efectiva de servicio (throughput)
-    const throughput = lambdaEff;
-
-    const metrics: QueueMetrics = {
-      P0: isNaN(P0) ? 0 : P0,
-      Pk: isNaN(Pk) ? 0 : Pk,
-      Ploss: isNaN(Ploss) ? 0 : Ploss,
-      L: isNaN(L) ? 0 : L,
-      Lq: isNaN(Lq) ? 0 : Lq,
-      W: isNaN(W) ? 0 : W,
-      Wq: isNaN(Wq) ? 0 : Wq,
-      utilization: isNaN(utilization) ? 0 : utilization,
-      throughput: isNaN(throughput) ? 0 : throughput
-    };
-
-    return {
-      success: true,
-      metrics
-    };
-
-  } catch (error) {
-    return {
-      success: false,
-      error: `Error en cálculo: ${error instanceof Error ? error.message : 'Error desconocido'}`,
-      metrics: {} as QueueMetrics
-    };
-  }
+// Interfaces para el modelo M/M/1/K
+interface MM1KParameters {
+  arrivalRate: number;    // λ: tasa de llegadas
+  serviceRate: number;    // μ: tasa de servicio
+  systemCapacity: number; // K: capacidad máxima del sistema (90)
+  turnCapacity: number;   // Capacidad específica del turno
 }
+
+interface MM1KMetrics {
+  L: number;    // Número promedio de estudiantes en el sistema
+  Lq: number;   // Longitud promedio de la cola
+  W: number;    // Tiempo promedio en el sistema
+  Wq: number;   // Tiempo promedio de espera en cola
+  ρ: number;    // Factor de utilización
+  P0: number;   // Probabilidad de sistema vacío
+  Pk: number;   // Probabilidad de sistema lleno (K estudiantes)
+  λeff: number; // Tasa efectiva de llegadas
+}
+
+/**
+ * Calcula las métricas del modelo M/M/1/K
+ * @param params Parámetros del modelo M/M/1/K
+ * @returns Métricas calculadas del sistema
+ */
+export const calculateMM1KMetrics = (params: MM1KParameters): MM1KMetrics => {
+  const { arrivalRate: λ, serviceRate: μ, systemCapacity: K, turnCapacity } = params;
+  
+  // Factor de utilización
+  const ρ = λ / μ;
+  
+  // Validar que no exceda la capacidad del turno
+  const effectiveK = Math.min(K, turnCapacity);
+  
+  // Probabilidad de sistema vacío (P0)
+  const P0 = ρ !== 1 
+    ? (1 - ρ) / (1 - Math.pow(ρ, effectiveK + 1))
+    : 1 / (effectiveK + 1);
+  
+  // Probabilidad de sistema lleno (PK)
+  const Pk = Math.pow(ρ, effectiveK) * P0;
+  
+  // Tasa efectiva de llegadas (considerando rechazos)
+  const λeff = λ * (1 - Pk);
+  
+  // Número promedio de estudiantes en el sistema (L)
+  const L = ρ !== 1
+    ? (ρ * (1 - (effectiveK + 1) * Math.pow(ρ, effectiveK) + effectiveK * Math.pow(ρ, effectiveK + 1))) /
+      ((1 - ρ) * (1 - Math.pow(ρ, effectiveK + 1)))
+    : effectiveK / 2;
+  
+  // Longitud promedio de la cola (Lq)
+  const Lq = L - (λeff / μ);
+  
+  // Tiempo promedio en el sistema (W)
+  const W = L / λeff;
+  
+  // Tiempo promedio de espera en cola (Wq)
+  const Wq = Lq / λeff;
+  
+      return {
+    L,
+    Lq,
+    W,
+    Wq,
+    ρ,
+    P0,
+    Pk,
+    λeff
+  };
+};
+
+/**
+ * Calcula la probabilidad de rechazo (estudiantes que no podrán ingresar)
+ * @param metrics Métricas del sistema M/M/1/K
+ * @returns Porcentaje de rechazos
+ */
+export const calculateRejectionRate = (metrics: MM1KMetrics): number => {
+  return metrics.Pk * 100; // Convertir a porcentaje
+};
+
+/**
+ * Calcula el throughput del sistema (estudiantes atendidos por unidad de tiempo)
+ * @param metrics Métricas del sistema M/M/1/K
+ * @returns Throughput efectivo
+ */
+export const calculateThroughput = (metrics: MM1KMetrics): number => {
+  return metrics.λeff;
+};
+
+/**
+ * Calcula métricas de eficiencia del sistema
+ * @param metrics Métricas del sistema M/M/1/K
+ * @returns Índice de eficiencia (0-100)
+ */
+export const calculateSystemEfficiency = (metrics: MM1KMetrics): number => {
+  // Factores de penalización
+  const UTILIZATION_WEIGHT = 0.4;    // 40% peso para utilización
+  const WAIT_TIME_WEIGHT = 0.3;      // 30% peso para tiempo de espera
+  const REJECTION_WEIGHT = 0.3;      // 30% peso para tasa de rechazo
+  
+  // Normalizar métricas
+  const utilizationScore = metrics.ρ * 100;
+  const waitTimeScore = Math.max(0, 100 - (metrics.Wq * 10)); // Penalizar tiempos > 10 min
+  const rejectionScore = Math.max(0, 100 - (metrics.Pk * 100));
+  
+  // Calcular eficiencia total
+  const efficiency = (
+    utilizationScore * UTILIZATION_WEIGHT +
+    waitTimeScore * WAIT_TIME_WEIGHT +
+    rejectionScore * REJECTION_WEIGHT
+  );
+  
+  return Math.min(100, Math.max(0, efficiency));
+};
+
+/**
+ * Genera recomendaciones basadas en las métricas del sistema
+ * @param metrics Métricas del sistema M/M/1/K
+ * @returns Recomendaciones para optimización
+ */
+export const generateSystemRecommendations = (metrics: MM1KMetrics): string[] => {
+  const recommendations: string[] = [];
+  
+  // Analizar utilización
+  if (metrics.ρ > 0.9) {
+    recommendations.push("Alta utilización: Considerar aumentar la tasa de servicio");
+  } else if (metrics.ρ < 0.5) {
+    recommendations.push("Baja utilización: El sistema puede estar sobredimensionado");
+  }
+  
+  // Analizar tiempos de espera
+  if (metrics.Wq > 10) { // más de 10 minutos
+    recommendations.push("Tiempos de espera elevados: Evaluar redistribución de turnos");
+  }
+  
+  // Analizar rechazos
+  if (metrics.Pk > 0.1) { // más del 10% de rechazos
+    recommendations.push("Alta tasa de rechazo: Considerar ajustar capacidad del turno");
+  }
+  
+  return recommendations;
+};
+
+/**
+ * Simula el comportamiento del sistema para un período específico
+ * @param params Parámetros del modelo M/M/1/K
+ * @param duration Duración de la simulación en minutos
+ * @returns Métricas simuladas
+ */
+export const simulateSystemBehavior = (
+  params: MM1KParameters,
+  duration: number
+): { timePoints: number[], queueLengths: number[] } => {
+  const timePoints: number[] = [];
+  const queueLengths: number[] = [];
+  let currentTime = 0;
+  let currentLength = 0;
+  
+  while (currentTime < duration) {
+    // Simular llegadas según distribución de Poisson
+    const nextArrival = -Math.log(Math.random()) / params.arrivalRate;
+    
+    // Simular servicio según distribución exponencial
+    const serviceTime = -Math.log(Math.random()) / params.serviceRate;
+    
+    currentTime += Math.min(nextArrival, serviceTime);
+    
+    // Actualizar longitud de cola
+    if (nextArrival < serviceTime && currentLength < params.turnCapacity) {
+      currentLength = Math.min(currentLength + 1, params.systemCapacity);
+    } else if (currentLength > 0) {
+      currentLength--;
+    }
+    
+    timePoints.push(currentTime);
+    queueLengths.push(currentLength);
+  }
+  
+  return { timePoints, queueLengths };
+};
 
 /**
  * Calcula la distribución de probabilidades de estado estacionario

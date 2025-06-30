@@ -38,15 +38,16 @@ export function useQueueSimulation() {
   // Estados principales
   const [dashboardState, setDashboardState] = useState<DashboardState>(() => {
     const sampleData = generateSampleData();
-    const initialMetrics = calculateMM1KMetrics(
-      sampleData.parameters.lambda,
-      sampleData.parameters.mu,
-      sampleData.parameters.K
-    );
+    const initialMetrics = calculateMM1KMetrics({
+      arrivalRate: sampleData.parameters.lambda,
+      serviceRate: sampleData.parameters.mu,
+      systemCapacity: sampleData.parameters.K,
+      turnCapacity: sampleData.parameters.K
+    });
 
-    return {
-      parameters: sampleData.parameters,
-      metrics: initialMetrics.success ? initialMetrics.metrics : {} as QueueMetrics,
+          return {
+        parameters: sampleData.parameters,
+        metrics: initialMetrics as any, // Convertir temporalmente
       turnConfigs: [
         {
           turnId: 'turn-1',
@@ -135,16 +136,17 @@ export function useQueueSimulation() {
       const updatedParams = { ...prev.parameters, ...newParams };
       updatedParams.rho = updatedParams.lambda / updatedParams.mu;
       
-      const result = calculateMM1KMetrics(
-        updatedParams.lambda,
-        updatedParams.mu,
-        updatedParams.K
-      );
+      const result = calculateMM1KMetrics({
+        arrivalRate: updatedParams.lambda,
+        serviceRate: updatedParams.mu,
+        systemCapacity: updatedParams.K,
+        turnCapacity: updatedParams.K
+      });
 
       return {
         ...prev,
         parameters: updatedParams,
-        metrics: result.success ? result.metrics : prev.metrics
+        metrics: result as any // Convertir temporalmente
       };
     });
   }, []);

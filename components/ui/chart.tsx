@@ -2,6 +2,19 @@
 
 import * as React from 'react';
 import * as RechartsPrimitive from 'recharts';
+import { Line } from 'react-chartjs-2';
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+  ChartData,
+  ChartOptions
+} from 'chart.js';
 
 import { cn } from '@/lib/utils';
 
@@ -353,6 +366,49 @@ function getPayloadConfigFromPayload(
   return configLabelKey in config
     ? config[configLabelKey]
     : config[key as keyof typeof config];
+}
+
+// Registrar componentes de Chart.js
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+);
+
+interface LineChartProps {
+  data: ChartData<'line'>;
+  options?: ChartOptions<'line'>;
+}
+
+export function LineChart({ data, options }: LineChartProps) {
+  const defaultOptions: ChartOptions<'line'> = {
+    responsive: true,
+    plugins: {
+      legend: {
+        position: 'top' as const,
+      },
+      title: {
+        display: false,
+      },
+    },
+    scales: {
+      y: {
+        beginAtZero: true,
+      },
+    },
+  };
+
+  return (
+    <Line 
+      data={data} 
+      options={options || defaultOptions}
+      className="w-full h-[300px]"
+    />
+  );
 }
 
 export {
