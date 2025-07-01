@@ -59,7 +59,7 @@ export default function LoginForm() {
         <Input
           id="email"
           type="email"
-          placeholder="tu.email@uni.edu.pe"
+          placeholder="tu.email@uni.pe"
           className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-11 sm:h-12 text-sm sm:text-base"
           {...register('email')}
         />

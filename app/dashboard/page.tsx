@@ -2,8 +2,9 @@
 // PÁGINA PRINCIPAL DEL DASHBOARD DE SIMULACIÓN DE COLAS
 // ============================================================================
 
-import { QueueSimulationDashboard } from './components';
+import { redirect } from 'next/navigation';
 
 export default function DashboardPage() {
-  return <QueueSimulationDashboard />;
+  // Redirigir automáticamente a la sección de perfil
+  redirect('/dashboard/perfil');
 } 

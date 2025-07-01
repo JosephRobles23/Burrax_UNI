@@ -3,9 +3,10 @@
 import { User } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
 import { useUserRole } from '@/hooks/use-user-role';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { LogOut, University, Crown, GraduationCap, Menu, X } from 'lucide-react';
+import { LogOut, BusFront, Crown, GraduationCap, Menu, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useState, useEffect, useRef } from 'react';
 
@@ -15,6 +16,7 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   const { isAdmin, loading } = useUserRole(user);
+  const router = useRouter();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -22,6 +24,8 @@ export default function Navbar({ user }: NavbarProps) {
     try {
       await supabase.auth.signOut();
       toast.success('Sesión cerrada exitosamente');
+      // Redirigir al home/login
+      router.push('/');
     } catch (error) {
       toast.error('Error al cerrar sesión');
     }
@@ -77,7 +81,7 @@ export default function Navbar({ user }: NavbarProps) {
             {/* Logo - Mejorado para móvil */}
             <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
               <div className="p-2 sm:p-2.5 rounded-lg bg-gradient-to-r from-yellow-500 to-yellow-600 shadow-lg">
-                <University className="h-5 w-5 sm:h-6 sm:w-6 text-black" />
+                <BusFront className="h-5 w-5 sm:h-6 sm:w-6 text-black" />
               </div>
               <div className="hidden xs:block">
                 <h1 className="text-lg sm:text-xl lg:text-2xl font-bold gradient-text">UNI MOBILITY</h1>

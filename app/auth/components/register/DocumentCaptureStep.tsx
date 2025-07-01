@@ -60,7 +60,7 @@ export default function DocumentCaptureStep({
       </div>
 
       {/* Cards de documentos */}
-      <div className="grid grid-cols-1 gap-4 sm:gap-6 max-w-2xl mx-auto">
+      <div className="grid grid-cols-1 sm:grid-cols-2  gap-4 sm:gap-6 max-w-3xl mx-auto">
         {/* Selfie */}
         <DocumentUploadCard
           type="selfie"
@@ -77,7 +77,7 @@ export default function DocumentCaptureStep({
         <DocumentUploadCard
           type="carnet"
           title="Carnet Universitario"
-          description="Debe mostrar claramente tu DNI y código"
+          description="Mostrar DNI y código"
           icon="🎓"
           capturedImage={capturedImages.carnet}
           onImageCapture={onImageCapture}

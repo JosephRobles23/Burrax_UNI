@@ -4,22 +4,21 @@ import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
-import { GraduationCap, Sparkles } from 'lucide-react';
+import { BusFront, Sparkles } from 'lucide-react';
+import AnimatedBus from '@/components/animations/AnimatedBus';
 
 export default function AuthComponent() {
   const [activeTab, setActiveTab] = useState('login');
 
   return (
     <div className="min-h-screen flex items-center justify-center px-3 sm:px-4 py-8 sm:py-12">
-      <div className="max-w-6xl w-full">
+      <div className="max-w-7xl w-full">
         {/* Mobile-first layout */}
-        <div className="space-y-8 lg:grid lg:grid-cols-2 lg:gap-12 lg:items-center lg:space-y-0">
+        <div className="space-y-8 lg:grid lg:grid-cols-2 lg:gap-9 lg:items-center lg:space-y-0">
           {/* Hero Section */}
-          <div className="text-center lg:text-left space-y-6 sm:space-y-8 order-2 lg:order-1">
-            <div className="float-animation">
-              <div className="inline-flex items-center justify-center w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-gradient-to-r from-yellow-500 to-yellow-600 mb-4 sm:mb-6 pulse-gold">
-                <GraduationCap className="h-8 w-8 sm:h-10 sm:w-10 text-black" />
-              </div>
+          <div className="text-center lg:text-left space-y-4 sm:space-y-6 order-2 lg:order-1">
+            <div className="float-animation flex items-center justify-center">
+              <AnimatedBus size={170} drive />
             </div>
             
             <div className="space-y-3 sm:space-y-4">
@@ -46,7 +45,7 @@ export default function AuthComponent() {
           </div>
 
           {/* Auth Forms */}
-          <div className="glass-card p-4 sm:p-6 lg:p-8 order-1 lg:order-2">
+          <div className="glass-card p-4 sm:p-5 lg:p-6 order-1 lg:order-2 max-w-2xl mx-auto">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               <TabsList className="grid w-full grid-cols-2 mb-6 sm:mb-8 bg-white/5">
                 <TabsTrigger 
@@ -65,17 +64,17 @@ export default function AuthComponent() {
               
               <TabsContent value="login" className="space-y-4 sm:space-y-6">
                 <div className="text-center mb-4 sm:mb-6">
-                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Bienvenido de vuelta</h2>
+                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Bienvenido a UNI Mobility</h2>
                   <p className="text-gray-400 text-sm sm:text-base">Inicia sesión en tu cuenta de estudiante</p>
                 </div>
                 <LoginForm />
               </TabsContent>
               
-              <TabsContent value="register" className="space-y-4 sm:space-y-6">
-                <div className="text-center mb-4 sm:mb-6">
-                  <h2 className="text-xl sm:text-2xl font-bold text-white mb-2">Crear cuenta</h2>
-                  <p className="text-gray-400 text-sm sm:text-base">Regístrate como estudiante de la UNI</p>
-                </div>
+              <TabsContent value="register" className="space-y-3 sm:space-y-4">
+                {/* <div className="text-center mb-4 sm:mb-6">
+                  <h2 className="text-xl sm:text-2xl font-bold text-white ">Crear cuenta</h2>
+                  <p className="text-gray-400 text-xs sm:text-xs">Regístrate como estudiante de la UNI</p>
+                </div> */}
                 <RegisterForm />
               </TabsContent>
             </Tabs>

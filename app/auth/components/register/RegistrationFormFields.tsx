@@ -25,9 +25,15 @@ export default function RegistrationFormFields({
   const { register, handleSubmit, formState: { errors }, setValue } = form;
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+    
+    <form onSubmit={handleSubmit(onSubmit)} className="space-y-3 sm:space-y-2.5">
+      <div className="text-center mb-4 sm:mb-6">
+        <h2 className="text-xl sm:text-2xl font-bold text-white ">Crear cuenta</h2>
+        <p className="text-gray-400 text-xs sm:text-xs">Regístrate como estudiante de la UNI</p>
+      </div>
+    
       {/* Nombres y Apellidos */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
         <div className="space-y-2">
           <Label htmlFor="nombres" className="text-white text-sm sm:text-base">
             Nombres
@@ -35,7 +41,7 @@ export default function RegistrationFormFields({
           <Input
             id="nombres"
             placeholder="Juan Carlos"
-            className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-10 sm:h-11 text-sm sm:text-base"
+            className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-9 sm:h-10 text-sm sm:text-base"
             {...register('nombres')}
           />
           {errors.nombres && (
@@ -50,7 +56,7 @@ export default function RegistrationFormFields({
           <Input
             id="apellidos"
             placeholder="Pérez García"
-            className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-10 sm:h-11 text-sm sm:text-base"
+            className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-9 sm:h-10 text-sm sm:text-base"
             {...register('apellidos')}
           />
           {errors.apellidos && (
@@ -60,7 +66,7 @@ export default function RegistrationFormFields({
       </div>
 
       {/* DNI y Código */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
         <div className="space-y-2">
           <Label htmlFor="dni" className="text-white text-sm sm:text-base">
             DNI
@@ -69,7 +75,7 @@ export default function RegistrationFormFields({
             id="dni"
             placeholder="12345678"
             maxLength={8}
-            className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-10 sm:h-11 text-sm sm:text-base"
+            className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-9 sm:h-10 text-sm sm:text-base"
             {...register('dni')}
           />
           {errors.dni && (
@@ -84,7 +90,7 @@ export default function RegistrationFormFields({
           <Input
             id="codigo"
             placeholder="20241234A"
-            className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-10 sm:h-11 text-sm sm:text-base"
+            className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-9 sm:h-10 text-sm sm:text-base"
             {...register('codigo')}
           />
           {errors.codigo && (
@@ -99,7 +105,7 @@ export default function RegistrationFormFields({
           Facultad
         </Label>
         <Select onValueChange={(value) => setValue('facultad', value)}>
-          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-yellow-500 h-10 sm:h-11 text-sm sm:text-base">
+          <SelectTrigger className="bg-white/5 border-white/20 text-white focus:border-yellow-500 h-9 sm:h-10 text-sm sm:text-base">
             <SelectValue placeholder="Selecciona tu facultad" />
           </SelectTrigger>
           <SelectContent className="bg-gray-900 border-gray-700">
@@ -127,7 +133,7 @@ export default function RegistrationFormFields({
         <Input
           id="carrera"
           placeholder="Ingeniería de Sistemas"
-          className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-10 sm:h-11 text-sm sm:text-base"
+          className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-9 sm:h-10 text-sm sm:text-base"
           {...register('carrera')}
         />
         {errors.carrera && (
@@ -144,7 +150,7 @@ export default function RegistrationFormFields({
           id="email"
           type="email"
           placeholder="tu.email@uni.edu.pe"
-          className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-10 sm:h-11 text-sm sm:text-base"
+          className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-9 sm:h-10 text-sm sm:text-base"
           {...register('email')}
         />
         {errors.email && (
@@ -161,7 +167,7 @@ export default function RegistrationFormFields({
           id="password"
           type="password"
           placeholder="Mínimo 6 caracteres"
-          className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-10 sm:h-11 text-sm sm:text-base"
+          className="bg-white/5 border-white/20 text-white placeholder-gray-400 focus:border-yellow-500 h-9 sm:h-10 text-sm sm:text-base"
           {...register('password')}
         />
         {errors.password && (
@@ -173,7 +179,7 @@ export default function RegistrationFormFields({
       <Button
         type="submit"
         disabled={isLoading}
-        className="w-full golden-button py-3 sm:py-4 text-base sm:text-lg font-semibold mt-6 sm:mt-8"
+        className="w-full golden-button py-2.5 sm:py-3 text-sm sm:text-base font-semibold mt-5 sm:mt-6"
       >
         {isLoading ? (
           <div className="flex items-center justify-center space-x-2">
