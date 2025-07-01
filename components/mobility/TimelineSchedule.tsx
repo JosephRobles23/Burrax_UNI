@@ -87,7 +87,7 @@ export default function TimelineSchedule({
       {/* Timeline - Optimizado */}
       <div className="relative">
         {/* Vertical Line - Más pequeña en móvil */}
-        <div className="absolute left-16 sm:left-8 lg:left-10 top-0 bottom-0 w-0.5 bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-600"></div>
+        <div className="absolute left-16 sm:left-8 lg:left-14 top-0 bottom-0 w-0.5 bg-gradient-to-b from-yellow-500 via-yellow-400 to-yellow-600"></div>
 
         <div className="space-y-4 sm:space-y-6 lg:space-y-8">
           {timeSlots.map((slot, index) => {
@@ -116,7 +116,7 @@ export default function TimelineSchedule({
                 </div>
 
                 {/* Slot Content - Compacto y con ancho limitado */}
-                <Card className="glass-card p-3 ml-3 sm:p-4 lg:p-6 flex-1 max-w-[230px] sm:max-w-none">
+                <Card className="glass-card p-3 ml-3 sm:p-4 lg:p-6 flex-1 max-w-[220px] sm:max-w-none">
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
                     {/* Time Info - Compacto */}
                     <div className="space-y-2 sm:space-y-3 lg:space-y-4">

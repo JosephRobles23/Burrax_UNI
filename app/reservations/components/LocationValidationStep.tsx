@@ -48,7 +48,7 @@ export default function LocationValidationStep({
 
       <LocationValidator 
         onValidation={onValidation}
-        targetLocation={{ lat: -12.020537, lng: -77.048378}} 
+        targetLocation={{ lat: -11.945902, lng: -76.990837}} 
         // Ubicacion de coliseo : -12.020537, -77.048378
         // Casa Joseph : -11.945902, -76.990837
 

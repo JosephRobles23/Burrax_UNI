@@ -52,10 +52,53 @@ export default function Dashboard({ user }: DashboardProps) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('profile');
   const [showDocumentModal, setShowDocumentModal] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<{
+    selfie: string | null;
+    carnet: string | null;
+  }>({ selfie: null, carnet: null });
 
   useEffect(() => {
     fetchUserData();
   }, [user.id]);
+
+  // Función para generar URLs firmadas para buckets privados
+  const generateSignedUrls = async (userData: UserData) => {
+    const urls = { selfie: null as string | null, carnet: null as string | null };
+    
+    try {
+      if (userData.url_selfie) {
+        // Extraer el path de la URL pública
+        const selfiePathMatch = userData.url_selfie.match(/user-documents\/(.+)$/);
+        if (selfiePathMatch) {
+          const { data } = await supabase.storage
+            .from('user-documents')
+            .createSignedUrl(selfiePathMatch[1], 3600); // 1 hora de validez
+          
+          if (data?.signedUrl) {
+            urls.selfie = data.signedUrl;
+          }
+        }
+      }
+
+      if (userData.url_carnet) {
+        // Extraer el path de la URL pública
+        const carnetPathMatch = userData.url_carnet.match(/user-documents\/(.+)$/);
+        if (carnetPathMatch) {
+          const { data } = await supabase.storage
+            .from('user-documents')
+            .createSignedUrl(carnetPathMatch[1], 3600); // 1 hora de validez
+          
+          if (data?.signedUrl) {
+            urls.carnet = data.signedUrl;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error generating signed URLs:', error);
+    }
+
+    setSignedUrls(urls);
+  };
 
   const fetchUserData = async () => {
     try {
@@ -72,6 +115,7 @@ export default function Dashboard({ user }: DashboardProps) {
       }
 
       setUserData(data);
+      await generateSignedUrls(data);
     } catch (error) {
       console.error('Error:', error);
       toast.error('Error al cargar los datos');
@@ -336,12 +380,25 @@ export default function Dashboard({ user }: DashboardProps) {
                   {userData.url_selfie && (
                     <div className="text-center">
                       <h3 className="text-white font-medium mb-2 text-sm sm:text-base">Selfie</h3>
-                      <div className="w-full h-32 sm:h-40 lg:h-48 rounded-lg overflow-hidden border border-green-500/50">
-                        <img
-                          src={userData.url_selfie}
-                          alt="Selfie"
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="w-full h-32 sm:h-40 lg:h-48 rounded-lg overflow-hidden border border-green-500/50 bg-gray-800 flex items-center justify-center">
+                        {signedUrls.selfie ? (
+                          <img
+                            src={signedUrls.selfie}
+                            alt="Selfie"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error('Error loading selfie image');
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.parentElement!.innerHTML = 
+                                '<div class="text-gray-400 text-center p-4"><Camera class="h-8 w-8 mx-auto mb-2" /><p class="text-sm">Error al cargar imagen</p></div>';
+                            }}
+                          />
+                        ) : (
+                          <div className="text-gray-400 text-center p-4">
+                            <Camera className="h-8 w-8 mx-auto mb-2" />
+                            <p className="text-sm">Cargando imagen...</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -349,12 +406,25 @@ export default function Dashboard({ user }: DashboardProps) {
                   {userData.url_carnet && (
                     <div className="text-center">
                       <h3 className="text-white font-medium mb-2 text-sm sm:text-base">Carnet Universitario</h3>
-                      <div className="w-full h-32 sm:h-40 lg:h-48 rounded-lg overflow-hidden border border-green-500/50">
-                        <img
-                          src={userData.url_carnet}
-                          alt="Carnet Universitario"
-                          className="w-full h-full object-cover"
-                        />
+                      <div className="w-full h-32 sm:h-40 lg:h-48 rounded-lg overflow-hidden border border-green-500/50 bg-gray-800 flex items-center justify-center">
+                        {signedUrls.carnet ? (
+                          <img
+                            src={signedUrls.carnet}
+                            alt="Carnet Universitario"
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              console.error('Error loading carnet image');
+                              e.currentTarget.style.display = 'none';
+                              e.currentTarget.parentElement!.innerHTML = 
+                                '<div class="text-gray-400 text-center p-4"><IdCard class="h-8 w-8 mx-auto mb-2" /><p class="text-sm">Error al cargar imagen</p></div>';
+                            }}
+                          />
+                        ) : (
+                          <div className="text-gray-400 text-center p-4">
+                            <IdCard className="h-8 w-8 mx-auto mb-2" />
+                            <p className="text-sm">Cargando imagen...</p>
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
