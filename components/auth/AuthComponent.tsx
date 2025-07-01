@@ -6,6 +6,9 @@ import LoginForm from './LoginForm';
 import RegisterForm from './RegisterForm';
 import { BusFront, Sparkles } from 'lucide-react';
 import AnimatedBus from '@/components/animations/AnimatedBus';
+import ScrambleText from '@/components/animations/ScrambleText';
+import SequentialScramble from '@/components/animations/SequentialScramble';
+import TypeWriter from '@/components/animations/TypeWriter';
 
 export default function AuthComponent() {
   const [activeTab, setActiveTab] = useState('login');
@@ -23,23 +26,24 @@ export default function AuthComponent() {
             
             <div className="space-y-3 sm:space-y-4">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">
-                <span className="gradient-text">UNI</span>
-                <span className="text-white"> Mobility</span>
+                <TypeWriter text="UNI" className="gradient-text" speed={70} />
+                <TypeWriter text=" Mobility" className="text-white" delay={700} speed={70} />
               </h1>
               <p className="text-lg sm:text-xl text-gray-300 max-w-lg mx-auto lg:mx-0 leading-relaxed">
-                Sistema moderno de gestión de movilidad universitaria para estudiantes de la 
-                <span className="gradient-text font-semibold"> Universidad Nacional de Ingeniería</span>
+                <TypeWriter text="Sistema moderno de gestión de movilidad universitaria para estudiantes de la" className="text-sm sm:text-base" delay={1500} speed={25} />
+                <span className="gradient-text font-semibold"> 
+                  <TypeWriter text=" Universidad Nacional de Ingeniería" delay={3300} speed={70}></TypeWriter></span>
               </p>
             </div>
 
             <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start space-y-3 sm:space-y-0 sm:space-x-6 text-gray-400">
               <div className="flex items-center space-x-2">
                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
-                <span className="text-sm sm:text-base">Registro Seguro</span>
+                <TypeWriter text="Registro Seguro" className="text-sm sm:text-base" delay={5500} speed={40} />
               </div>
               <div className="flex items-center space-x-2">
                 <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-yellow-500" />
-                <span className="text-sm sm:text-base">Validación Biométrica</span>
+                <TypeWriter text="Validación Biométrica" className="text-sm sm:text-base" delay={6400} speed={40} />
               </div>
             </div>
           </div>
