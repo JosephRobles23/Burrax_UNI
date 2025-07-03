@@ -387,7 +387,7 @@ function simulateStep() {
 const config = {
   lambda: 2.5,              // Estudiantes por minuto
   mu: 2.0,                  // Validaciones por minuto
-  K: 45,                    // Capacidad máxima bus
+  K: 90,                    // Capacidad máxima bus
   turn_capacities: [15, 15, 15, 45],
   arrival_rates: [0.8, 1.2, 0.9, 0.6],
   duration_minutes: 90,
