@@ -251,14 +251,14 @@ redistributions.forEach(change => {
 ### **Estructura de Archivos**
 ```
 app/dashboard/
-├── utils/queueTheory.ts       # 🧮 Algoritmos matemáticos M/M/1/K
-├── hooks/useQueueSimulation.ts # 🔄 Lógica de simulación en tiempo real
-├── types/index.ts             # 📋 Definiciones de tipos TypeScript
+├── utils/queueTheory.ts       #  Algoritmos matemáticos M/M/1/K
+├── hooks/useQueueSimulation.ts #  Lógica de simulación en tiempo real
+├── types/index.ts             #  Definiciones de tipos TypeScript
 └── components/
-    ├── QueueSimulationDashboard.tsx # 📊 Dashboard principal
-    ├── QueueMetricsCards.tsx       # 📈 Métricas en tiempo real
-    ├── QueueVisualization.tsx      # 📉 Gráficos y visualizaciones
-    └── RedistributionModal.tsx     # ⚖️ Panel de redistribución
+    ├── QueueSimulationDashboard.tsx #  Dashboard principal
+    ├── QueueMetricsCards.tsx       #  Métricas en tiempo real
+    ├── QueueVisualization.tsx      #  Gráficos y visualizaciones
+    └── RedistributionModal.tsx     # ⚖ Panel de redistribución
 ```
 
 ### **Flujo de Datos en la Aplicación**
