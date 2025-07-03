@@ -115,7 +115,7 @@ graph TD
 |-----------|---------|-------------|---------|
 | Tasa de Llegada | λ (lambda) | Estudiantes que llegan por minuto | 2.5 estudiantes/min |
 | Tasa de Servicio | μ (mu) | Estudiantes procesados por minuto | 2.0 estudiantes/min |
-| Capacidad Máxima | K | Máximo estudiantes en el sistema | 45 estudiantes |
+| Capacidad Máxima | K | Máximo estudiantes en el sistema | 90 estudiantes |
 | Factor de Utilización | ρ (rho) | ρ = λ/μ | 1.25 (sobrecarga) |
 
 ### **Configuración de Turnos**
@@ -183,7 +183,7 @@ Wq = Lq / λₑff
 const params = {
   arrivalRate: 2.5,      // λ = 2.5 estudiantes/min
   serviceRate: 2.0,      // μ = 2.0 estudiantes/min  
-  systemCapacity: 45,    // K = 45 estudiantes máximo
+  systemCapacity: 90,    // K = 90 estudiantes máximo
   turnCapacity: 15       // Capacidad específica del turno
 };
 ```
@@ -470,7 +470,7 @@ const kpis = {
 
 | Métrica | Antes | Después |
 |---------|--------|----------|
-| Tiempo promedio de espera | 45 min | 5 min |
+| Tiempo promedio de espera | 45 min | 10 min |
 | Eficiencia de distribución | 45% | 85% |
 | Precisión de conteo | 90% | 99.9% |
 
