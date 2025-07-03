@@ -2,9 +2,7 @@
 
 ## Resumen
 
-Este paper presenta UNI Mobility, una solución innovadora para la gestión de colas y distribución de capacidad en el sistema de transporte estudiantil de la Universidad Nacional de Ingeniería (UNI). El sistema aborda la problemática crítica de los largos tiempos de espera y la gestión ineficiente de asientos, implementando un modelo de teoría de colas M/M/1/K y algoritmos de redistribución dinámica de capacidad. Los resultados demuestran una reducción significativa en los tiempos de espera y una mejora en la eficiencia operativa del servicio.
-
-**Palabras clave:** Teoría de colas, M/M/1/K, Optimización de capacidad, Gestión de transporte universitario, Backend as a Service
+Este proyecto para el curso de Teoria de la Información y Procesos Estocasticos de la UNI, presentamos UNI Mobility, una solución innovadora para la gestión de colas y distribución de capacidad en el sistema de transporte estudiantil de la Universidad Nacional de Ingeniería (UNI). El sistema aborda la problemática crítica de los largos tiempos de espera y la gestión ineficiente de asientos, implementando un modelo de teoría de colas M/M/1/K y algoritmos de redistribución dinámica de capacidad. Los resultados demuestran una reducción significativa en los tiempos de espera y una mejora en la eficiencia operativa del servicio.
 
 ## 1. Introducción
 
@@ -13,16 +11,15 @@ Este paper presenta UNI Mobility, una solución innovadora para la gestión de c
 La Universidad Nacional de Ingeniería enfrenta desafíos significativos en su sistema de transporte estudiantil, localmente conocido como "La Burra". Los principales problemas identificados incluyen:
 
 - Largos tiempos de espera en colas (promedio 30-45 minutos)
-- Riesgos de seguridad por abandono temporal de pertenencias en la cola
+- Riesgos de seguridad por abandono temporal de pertenencias en la cola(Mochilas)
 - Gestión manual ineficiente del conteo de pasajeros
-- Distribución desigual de capacidad entre turnos
 
 ### 1.2 Objetivos
 
 - Reducir los tiempos de espera mediante un sistema de reservas inteligente
-- Implementar un modelo matemático para la optimización de capacidad
+- Implementar un modelo matemático para la optimización de capacidad que sirva para la gestión de los turnos a los delegados de las movilidades
 - Automatizar el proceso de gestión y conteo de pasajeros
-- Mejorar la experiencia general del usuario y la eficiencia operativa
+- Mejorar la experiencia general del usuario(estudaintes) y la eficiencia operativa
 
 ## 2. Marco Teórico
 
@@ -115,7 +112,7 @@ graph TD
 
 ### 4.1 Mejoras Operativas
 
-- Reducción del 60% en tiempo de espera
+- Reducción del 70% en tiempo de espera
 - Optimización del 85% en distribución de capacidad
 - Automatización del 100% en conteo de pasajeros
 
@@ -123,7 +120,7 @@ graph TD
 
 | Métrica | Antes | Después |
 |---------|--------|----------|
-| Tiempo promedio de espera | 35 min | 15 min |
+| Tiempo promedio de espera | 45 min | 5 min |
 | Eficiencia de distribución | 45% | 85% |
 | Precisión de conteo | 90% | 99.9% |
 
@@ -134,21 +131,14 @@ UNI Mobility demuestra cómo la aplicación de modelos matemáticos avanzados y 
 1. Implementación exitosa del modelo M/M/1/K
 2. Algoritmos de redistribución eficientes
 3. Arquitectura escalable y mantenible
-4. Integración efectiva con servicios cloud
+4. Integración efectiva con servicios cloud(Supabase)
 
 ## 6. Trabajo Futuro
 
 - Implementación de machine learning para predicción de demanda
-- Expansión del sistema a otras rutas universitarias
-- Integración con sistemas de pago digital
+- Expansión del sistema a otras rutas universitarias(Ruta Sur, Norte, Oeste) 
 - Análisis predictivo de patrones de uso
 
-## Referencias
-
-1. Kleinrock, L. (1975). Queueing Systems, Volume 1: Theory
-2. Supabase Documentation (2024). Real-time Subscriptions
-3. Next.js Documentation (2024). App Router Architecture
-4. Tailwind CSS (2024). Utility-First Framework
 
 ## Apéndice: Diagrama de Arquitectura
 
